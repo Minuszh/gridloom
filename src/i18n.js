@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 (function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.GridloomI18n=api;})(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
- const zh={'Lock gridloom layer':'锁定 gridloom 图层','Show gridloom layer':'显示 gridloom 图层','gridloom layer locked.':'gridloom 图层已锁定。','gridloom layer unlocked.':'gridloom 图层已解锁。','gridloom layer shown.':'gridloom 图层已显示。','gridloom layer hidden.':'gridloom 图层已隐藏。',Add:'添加','Lock / unlock guides':'锁定 / 解锁参考线','Guide lock toggled.':'已切换参考线锁定状态。',
+ const zh={'Book mode':'书籍模式','Off':'关闭','Left / right pages':'左右双页','Top / bottom pages':'上下双页','Lock gridloom layer':'锁定 gridloom 图层','Show gridloom layer':'显示 gridloom 图层','gridloom layer locked.':'gridloom 图层已锁定。','gridloom layer unlocked.':'gridloom 图层已解锁。','gridloom layer shown.':'gridloom 图层已显示。','gridloom layer hidden.':'gridloom 图层已隐藏。',Add:'添加','Lock / unlock guides':'锁定 / 解锁参考线','Guide lock toggled.':'已切换参考线锁定状态。',
 'Reading column':'单栏正文','Editorial · 2 columns':'双栏编辑版式','Editorial · 3 columns':'三栏编辑版式','Modules · 2 × 4':'模块网格 · 2 × 4','Modules · 4 × 5':'模块网格 · 4 × 5','Modules · 4 × 8':'模块网格 · 4 × 8','Syntax examples':'语法与示例','syntaxIntro':'每行描述一组参考线。| 在当前位置画线，数字表示移动距离，~ 平分剩余空间。','syntaxThirds':'三等分：四条竖向参考线。复制下面一行即可使用。','syntaxBaseline':'基线：每隔 16 pt 添加一条横线，直到填满范围。','syntaxMore':'(v) 竖线，(h) 横线；$name 定义变量，*3 重复三次，* 重复填满，{ } 组合命令。尺寸可写 mm、pt、px 或 %；不写单位时跟随文档。',
   'Browser only · Illustrator not connected':'浏览器模式 · 未连接 Illustrator','Quick guides':'快捷参考线','Mode':'模式',
   Grid:'网格',Custom:'自定义',Saved:'预设',Left:'左',Center:'中',Right:'右',Top:'上',Middle:'中',Bottom:'下',Clear:'清除','Show / hide':'显示 / 隐藏',
@@ -17,7 +17,7 @@
   'Bare values use document units ({unit}).':'无单位数字采用文档单位（{unit}）。'
  };
  const en={syntaxIntro:"Each line describes a grid. | places a guide, a number moves a distance, and ~ shares the remaining space.",syntaxThirds:"Thirds: four vertical guides. Copy this line to try it.",syntaxBaseline:"Baseline: repeat a horizontal guide every 16 pt across the scope.",syntaxMore:"(v) vertical, (h) horizontal; $name defines a variable, *3 repeats three times, * fills the scope, and { } groups commands. Use mm, pt, px or %. Bare values use document units.",syntaxHelp:'| Guide · ~ Flexible space · $ Variable · *3 Repeat · * Fill · { } Block · (v)/(h) Direction · # Comment'};
- const errors={'请先生成 gridloom 参考线':'Create gridloom guides first',
+ const errors={'无效书籍模式':'Invalid book mode','请先生成 gridloom 参考线':'Create gridloom guides first',
   '无法创建原生参考线':'Could not create a native guide',
   '运算嵌套过深':'Arithmetic is nested too deeply','无效运算表达式':'Invalid arithmetic expression','运算单位不匹配':'Incompatible arithmetic units','不能除以零':'Cannot divide by zero','尺寸字段过长':'Size field is too long','内置变量不支持捕获':'Built-in variables do not support captures','捕获块不存在':'Capture block does not exist','捕获不能用于变量声明':'A capture cannot declare a variable',
   '所有画板合计不能超过 5000 条参考线':'At most 5,000 guides across all artboards',

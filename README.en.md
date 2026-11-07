@@ -23,7 +23,7 @@ The panel follows Illustrator's language, font, and theme, with grayscale icons.
 
 ## Install
 
-1. Download `gridloom-0.3.12.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
+1. Download `gridloom-0.3.13.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
 2. Drag the file into [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/).
 3. Restart Illustrator and open **Window → Extensions → gridloom**.
 
@@ -45,6 +45,7 @@ Unsigned local builds use CEP debug mode. See [testing and local installation (C
 
 ## Quick notes
 
+- **Book mode**: choose left/right or top/bottom pages under Position & settings. Split the scope equally and repeat the grid on each page; margins, percentages, rows, and columns apply per page.
 - Enter dimensions such as `10px`, `3mm`, or `5%`. Bare numbers follow document ruler units. `1 px = 1 pt`.
 - A count of `0` retains margin guides. Leave the count blank and enter a fixed size to fill the scope.
 - Each generation creates a group inside the `gridloom` layer. Multiple groups on the same artboard share its name.

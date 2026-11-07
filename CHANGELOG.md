@@ -3,6 +3,13 @@
 0.3.12 为首次公开预发布，早期版本为本地开发记录。
 0.3.12 is the first public pre-release; earlier entries document local development.
 
+## 0.3.13 — 2026-11-07
+
+- 添加左右 / 上下双页书籍模式，支持普通网格、自定义语法、快捷线与预设。
+  Add left/right and top/bottom book layouts for grids, notation, quick guides, and presets.
+- 移除小数位数、参考线长度、对象边界与清理对象设置。
+  Remove precision, guide length, object bounds, and clear target controls.
+
 ## 0.3.12 — 2026-11-07
 
 - 分组名称仅保留画板名，移除时间。

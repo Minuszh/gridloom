@@ -7,7 +7,7 @@
  const G=window.Gridloom,N=window.GridloomNotation,P=window.GridloomPresets,H=window.GridloomHostClient;
  const I=window.GridloomI18n.create((!H.available&&new URLSearchParams(location.search).get('lang'))||H.locale),t=I.t;I.apply(document);window.GridloomIcons.mount(t);
  const $=id=>document.getElementById(id),all=s=>Array.from(document.querySelectorAll(s));
- const fields=['cols','rows','colWidth','rowHeight','gutterX','gutterY','alignX','alignY','guideLength'];
+ const fields=['cols','rows','colWidth','rowHeight','gutterX','gutterY','alignX','alignY','book'];
  let mode='grid',context=null,presets=[],editing=-1,working=false,refreshId=0,notationUnit=null;
  let planCache=null,refreshTask=null,lastHint='',presetsMounted=false;
  function guideButtons(state){
@@ -19,12 +19,12 @@
   }
  }
  const status=(text,error=false)=>{$('status').textContent=error?I.error(text):text;$('status').classList.toggle('error',error);$('status').setAttribute('aria-hidden',String(!error));};
- function config(){return {unit:mode==='notation'&&notationUnit?notationUnit:(context?.unit||'pt'),margins:Object.fromEntries(['top','right','bottom','left'].map(k=>[k,$('margin-'+k).value])),...Object.fromEntries(fields.map(k=>[k,$(k).value])),precision:Number($('precision').value),border:$('border').checked};}
+ function config(){return {unit:mode==='notation'&&notationUnit?notationUnit:(context?.unit||'pt'),margins:Object.fromEntries(['top','right','bottom','left'].map(k=>[k,$('margin-'+k).value])),...Object.fromEntries(fields.map(k=>[k,$(k).value])),precision:3,guideLength:'artboard',border:$('border').checked};}
  function setConfig(c){
   const explicit=value=>{try{return G.qualify(value,c.unit);}catch{return value;}};
   for(const k in c.margins)$('margin-'+k).value=explicit(c.margins[k]);
-  fields.forEach(k=>$(k).value=['colWidth','rowHeight','gutterX','gutterY'].includes(k)?explicit(c[k]):c[k]);
-  $('precision').value=c.precision;$('border').checked=c.border;
+  fields.forEach(k=>$(k).value=['colWidth','rowHeight','gutterX','gutterY'].includes(k)?explicit(c[k]):(k==='book'?(c.book||'none'):c[k]));
+  $('border').checked=c.border;
  }
  const currentPreset=name=>({name,mode,config:config(),notation:$('notation').value});
  function store(){try{localStorage.setItem('gridloom.presets.v1',P.encode(presets));}catch(error){status(t('Cannot save locally. Export a backup.'),true);}}
@@ -32,7 +32,7 @@
  all('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
  async function read(){
   if(!H.available)return {name:'Sample',unit:'mm',contexts:[{key:'artboard:0',name:'A2',bounds:[0,594*G.UNITS.mm,420*G.UNITS.mm,0],artboard:[0,594*G.UNITS.mm,420*G.UNITS.mm,0]}]};
-  return H.call('context',{scope:'auto',visibleBounds:$('bounds-mode').value==='visible'});
+  return H.call('context',{scope:'auto',visibleBounds:false});
  }
  async function refresh(){
   if(working)return;if(refreshTask)return refreshTask;
@@ -61,14 +61,13 @@
  }
  async function action(fn){if(working)return;working=true;++refreshId;const controls=all('button,input,select,textarea'),disabled=controls.map(el=>el.disabled);controls.forEach(el=>el.disabled=true);status(t('Working…'));try{if(refreshTask)await refreshTask;await fn();}catch(error){status(error.message,true);}finally{working=false;controls.forEach((el,i)=>el.disabled=disabled[i]);guideButtons(context?.guideState);}}
  $('apply').onclick=()=>action(async()=>{context=await read();const plans=compute();const result=await H.call('apply',{token:context.token,plans:plans.map(p=>({key:p.key,lines:p.lines})),mode:$('write-mode').value});context.guideState=result.guideState;status(t('Created {n}; replaced {r}.',{n:result.count,r:result.removed}));});
- $('clear').onclick=()=>{if($('clear-mode').value==='all'&&!confirm(t('Clear ALL guides in this scope, including manually created guides?')))return;action(async()=>{context=await read();const result=await H.call('clear',{token:context.token,clearMode:$('clear-mode').value});context.guideState=result.guideState;status(t('Removed {n} guides.',{n:result.removed}));});};
+ $('clear').onclick=()=>action(async()=>{context=await read();const result=await H.call('clear',{token:context.token,clearMode:'owned'});context.guideState=result.guideState;status(t('Removed {n} guides.',{n:result.removed}));});
  $('lock-guides').onclick=()=>action(async()=>{const state=await H.call('lockGuides');if(context)context.guideState=state;status(t(state.locked?'gridloom layer locked.':'gridloom layer unlocked.'));});
  $('visibility').onclick=()=>action(async()=>{const state=await H.call('visibility');if(context)context.guideState=state;status(t(state.visible?'gridloom layer shown.':'gridloom layer hidden.'));});
- all('[data-quick]').forEach(b=>{b.setAttribute('aria-label',t(({left:'Left edge',center:'Vertical center',right:'Right edge',top:'Top edge',middle:'Horizontal center',bottom:'Bottom edge'})[b.dataset.quick]));b.onclick=()=>action(async()=>{context=await read();const plans=context.contexts.map(c=>({key:c.key,lines:G.quick(b.dataset.quick,c,config().guideLength)}));const result=await H.call('apply',{token:context.token,plans,mode:'append'});context.guideState=result.guideState;status(t('Added {n} guides.',{n:result.count}));});});
+ all('[data-quick]').forEach(b=>{b.setAttribute('aria-label',t(({left:'Left edge',center:'Vertical center',right:'Right edge',top:'Top edge',middle:'Horizontal center',bottom:'Bottom edge'})[b.dataset.quick]));b.onclick=()=>action(async()=>{context=await read();const plans=context.contexts.map(c=>({key:c.key,lines:G.book(config(),c,(settings,page)=>({lines:G.quick(b.dataset.quick,page,settings.guideLength)})).lines}));const result=await H.call('apply',{token:context.token,plans,mode:'append'});context.guideState=result.guideState;status(t('Added {n} guides.',{n:result.count}));});});
  $('reset').onclick=()=>{const c=G.defaults();for(const key of Object.keys(c.margins))c.margins[key]='';for(const key of ['cols','rows','colWidth','rowHeight','gutterX','gutterY'])c[key]='';setConfig(c);$('notation').value='';notationUnit=null;$('save-form').hidden=true;editing=-1;tab('grid');};
- $('bounds-mode').onchange=refresh;
  all('#page-grid input').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)['top','right','bottom','left'].forEach(k=>$('margin-'+k).value=el.value);render();});
- fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['precision','border']).forEach(k=>$(k).onchange=render);
+ fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['border']).forEach(k=>$(k).onchange=render);
  $('notation').oninput=()=>{notationUnit=null;render();};
 
  function selectPreset(p){setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;render();}

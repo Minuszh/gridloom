@@ -37,3 +37,30 @@ test('zero rows still validate margin constraints and support margin notation',(
  assert.throws(()=>G.axis(100,'60','60','0','','','start','pt'));
  assert.deepEqual(G.axis(100,'10 | 5','20 | 5','0','','','start','pt').positions,[10,15,75,80]);
 });
+
+test('book mode draws two equal page grids with page-relative margins and local spans',()=>{
+ const c={...cfg(),book:'horizontal',cols:'2',rows:'0',gutterX:'0',margins:{top:'10%',right:'10%',bottom:'10%',left:'10%'}};
+ const p=G.plan(c,context);
+ assert.equal(p.columns.size,84);
+ for(const line of p.lines){assert(line[0]>=100&&line[2]<=520);assert(line[1]<=900&&line[3]>=306);}
+ assert(p.lines.some(l=>l.join(',')==='121,900,121,306'));
+ assert(p.lines.some(l=>l.join(',')==='331,900,331,306'));
+ assert(p.lines.some(l=>l.join(',')==='100,840.6,310,840.6'));
+ assert(p.lines.some(l=>l.join(',')==='310,840.6,520,840.6'));
+});
+test('vertical book mode translates a page downward and notation follows both pages',()=>{
+ const c={...cfg(),book:'vertical'};
+ assert.deepEqual(N.compile('| 50% | (h)',context,c).lines,[[100,900,520,900],[100,751.5,520,751.5],[100,603,520,603],[100,454.5,520,454.5]]);
+ const single=G.plan({...c,book:'none',guideLength:'selection'}, {...context,bounds:[100,900,520,603],artboard:[100,900,520,603]});
+ assert.deepEqual(G.plan(c,context).lines,G.unique(single.lines.concat(single.lines.map(([x,y,z,w])=>[x,y-297,z,w-297])),3));
+});
+test('book mode is saved, old presets default off, and invalid modes are rejected',()=>{
+ const p=P.builtIn('columns');p.config.book='horizontal';assert.equal(P.decode(P.encode([p]))[0].config.book,'horizontal');
+ delete p.config.book;assert.equal(P.validate(p).config.book,'none');
+ p.config.book='bad';assert.throws(()=>P.validate(p));assert.throws(()=>G.plan(p.config,context));
+});
+test('book mode calculates a page once and enforces combined line limits',()=>{
+ let calls=0;const c={...cfg(),book:'horizontal'};
+ G.book(c,context,()=>{calls++;return {lines:[[100,900,100,306]]};});assert.equal(calls,1);
+ assert.throws(()=>G.book(c,context,()=>({lines:Array.from({length:2501},(_,i)=>[i,900,i,306])})));
+});

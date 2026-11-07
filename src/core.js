@@ -126,7 +126,21 @@
       return Number(v.toFixed(Number(precision)));
     })).filter(line => { const key = line.join(','); if (seen.has(key)) return false; seen.add(key); return true; });
   }
-  function plan(config, context) {
+  function book(config, context, draw) {
+    const mode=config.book||'none';
+    assert(['none','horizontal','vertical'].includes(mode),'无效书籍模式');
+    if(mode==='none')return draw(config,context);
+    const [l,t,r,b]=context.bounds;
+    const bounds=mode==='horizontal'?[[l,t,(l+r)/2,b],[(l+r)/2,t,r,b]]:[[l,t,r,(t+b)/2],[l,(t+b)/2,r,b]];
+    const pageConfig={...config,book:'none',guideLength:'selection'};
+    const first=draw(pageConfig,{...context,bounds:bounds[0],artboard:bounds[0]});
+    // Both pages have the same dimensions: calculate once and translate the second set.
+    const dx=bounds[1][0]-l,dy=bounds[1][1]-t;
+    const second=first.lines.map(([x1,y1,x2,y2])=>[x1+dx,y1+dy,x2+dx,y2+dy]);
+    return {...first,lines:unique(first.lines.concat(second),config.precision)};
+  }
+  function plan(config,context){return book(config,context,planPage);}
+  function planPage(config, context) {
     const [left, top, right, bottom] = context.bounds;
     const width = right - left, height = top - bottom;
     assert(width > 0 && height > 0, '范围尺寸必须大于零');
@@ -146,6 +160,6 @@
     assert(map[which], '未知快捷操作');
     return [map[which]];
   }
-  const defaults = () => ({unit:'mm',margins:{top:'12',right:'12',bottom:'12',left:'12'},cols:'12',rows:'0',colWidth:'',rowHeight:'',gutterX:'4',gutterY:'4',alignX:'start',alignY:'start',guideLength:'artboard',precision:3,border:false});
-  return {UNITS,LIMIT,assert,length,qualify,sizeToken,field,axis,unique,plan,quick,defaults};
+  const defaults = () => ({unit:'mm',margins:{top:'12',right:'12',bottom:'12',left:'12'},cols:'12',rows:'0',colWidth:'',rowHeight:'',gutterX:'4',gutterY:'4',alignX:'start',alignY:'start',guideLength:'artboard',precision:3,border:false,book:'none'});
+  return {UNITS,LIMIT,assert,length,qualify,sizeToken,field,axis,unique,book,plan,quick,defaults};
 });

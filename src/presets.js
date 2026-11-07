@@ -11,8 +11,9 @@
   G.assert(['artboard','selection'].includes(c.guideLength),'无效参考线长度');
   G.assert(Number.isInteger(c.precision)&&c.precision>=0&&c.precision<=6&&typeof c.border==='boolean','无效精度');
   G.assert(typeof p.notation==='string'&&p.notation.length<=50000,'无效语法文本');
+  G.assert(c.book===undefined||['none','horizontal','vertical'].includes(c.book),'无效书籍模式');
   // Allowlist fields; never merge arbitrary imported keys into runtime state.
-  return {name:p.name.trim(),mode:p.mode,config:Object.fromEntries(Object.keys(d).map(k=>[k,k==='margins'?Object.fromEntries(['top','right','bottom','left'].map(side=>[side,c.margins[side]])):c[k]])),notation:p.notation};
+  return {name:p.name.trim(),mode:p.mode,config:Object.fromEntries(Object.keys(d).map(k=>[k,k==='margins'?Object.fromEntries(['top','right','bottom','left'].map(side=>[side,c.margins[side]])):k==='book'?(c.book||'none'):c[k]])),notation:p.notation};
  }
  function decode(text){G.assert(text.length<1000000,'预设文件过大');const data=JSON.parse(text);G.assert(data.version===1&&Array.isArray(data.presets)&&data.presets.length<=100,'不支持的预设格式');return data.presets.map(validate);}
  function encode(presets){return JSON.stringify({version:1,presets:presets.map(validate)},null,2);}

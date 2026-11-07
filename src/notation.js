@@ -85,7 +85,8 @@
     }
     return {vars,grids};
   }
-  function compile(source,context,config){
+  function compile(source,context,config){return G.book(config,context,(c,page)=>compilePage(source,page,c));}
+  function compilePage(source,context,config){
     const program=parse(source),[left,top,right,bottom]=context.bounds;
     const width=right-left,height=top-bottom;G.assert(width>0&&height>0,'范围尺寸必须大于零');let budget=0;
     const cache=new Map(),resolving=[];

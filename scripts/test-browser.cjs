@@ -106,6 +106,11 @@ async function main(){
  await evaluate(`window.originalPlan=Gridloom.plan;window.planCalls=0;Gridloom.plan=(...args)=>{planCalls++;return originalPlan(...args);};document.getElementById('tab-grid').click();document.getElementById('tab-presets').click();document.getElementById('tab-grid').click();Gridloom.plan=originalPlan;`);
  assert(await evaluate(`planCalls===0`),'Unchanged tab switches must reuse computed geometry');
  await evaluate(`GridloomHostClient.call=originalCall;GridloomHostClient.available=false;`);
+ assert(await evaluate(`!document.querySelector('#precision,#guideLength,#bounds-mode,#clear-mode')`),'Removed settings must be absent');
+ await evaluate(`document.getElementById('tab-grid').click();document.getElementById('book').value='horizontal';document.getElementById('book').dispatchEvent(new Event('change',{bubbles:true}));`);
+ assert(await evaluate(`!document.getElementById('status').classList.contains('error')`),'Book mode should render');
+ await evaluate(`document.getElementById('save').click();document.getElementById('preset-name').value='Book UI';document.getElementById('save-confirm').click();`);
+ assert(await evaluate(`JSON.parse(localStorage.getItem('gridloom.presets.v1')).presets.some(p=>p.name==='Book UI'&&p.config.book==='horizontal')`),'Preset must retain book mode');
  console.log('UI passed: 260/320/400px, no preview/unit selector, EN/ZH, mixed units, notation/captures/arithmetic errors, preset save, reset, field notation, disabled host writes, zero-row margins, expanding settings, stable tabs/footer, internal list/error scrolling and constrained docked actions.');
  await send('Browser.close',{},null);
 }

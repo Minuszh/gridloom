@@ -23,7 +23,7 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.12.zxp`。
+1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.13.zxp`。
 2. 将文件拖入 [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/)。
 3. 重启 Illustrator，在 **窗口 → 扩展功能 → gridloom** 中打开。
 
@@ -45,6 +45,7 @@ npm run install:dev
 
 ## 使用小记
 
+- **书籍模式**：在「位置与设置」选择左右双页或上下双页，当前范围等分成两页，每页绘制同一套网格；边距、百分比和行列按单页计算。
 - 尺寸直接写 `10px`、`3mm` 或 `5%`；不写单位时，跟随文档标尺单位。`1 px = 1 pt`。
 - 行列数量填 `0`，仍保留边距线；留空并填写固定尺寸，会自动填满。
 - 每次生成都在 `gridloom` 图层下建立一组。同一画板可以有多组，名称保持为画板名。
