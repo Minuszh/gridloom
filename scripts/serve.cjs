@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
+const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=path.resolve(__dirname,'../dist');
+const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png'};
+http.createServer((req,res)=>{try{const file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));if(file!==root&&!file.startsWith(root+path.sep))throw Error();const target=file===root?path.join(root,'index.html'):file;const data=fs.readFileSync(target);res.setHeader('Content-Type',types[path.extname(target)]||'application/octet-stream');res.end(data);}catch{res.statusCode=404;res.end('Not found');}}).listen(4173,'127.0.0.1',()=>console.log('Preview: http://127.0.0.1:4173'));

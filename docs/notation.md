@@ -1,0 +1,89 @@
+# 网格语法与尺寸
+
+根据 GuideGuide 公开文档独立实现，不读取其程序或私有资源。每行一个网格或变量声明；块内允许换行。默认横向参考线，裸数字使用当前文档标尺单位。错误保留行、列位置。
+
+```text
+# 三等分列
+$column = | ~ |
+$column*3 (v)
+
+# 16 px 基线，重复到填满
+$row = | 16px |
+$row* (h)
+
+# 居中 100 pt 的三栏
+~ | { ~ | ~ | ~ (100pt) } | ~ (v)
+
+# 横纵边距都取范围宽度的 20%
+$margin = | {20%} | ~ | 20% | (v $WIDTH)
+$margin (v)
+| $margin[1] | ~ | $margin[1] | (h)
+```
+
+| 表达 | 行为 |
+| --- | --- |
+| `\|` | 在当前位置生成参考线 |
+| `~` | 平均分配剩余空间 |
+| `12mm` / `10%` | 移动距离；百分比相对于所在网格 |
+| `$name = ...` | 定义变量，支持数字名称和未命名变量 `$` |
+| `$name` | 引用已声明变量；不能向前引用或循环引用 |
+| `$name[0]` | 引用变量全部命令 |
+| `$name[1]` | 引用第一个捕获块；嵌套块按开括号出现顺序编号 |
+| `*3` | 重复前一命令或块三次 |
+| `*` | 按正的固定尺寸填满；一个网格最多一个填充 |
+| `{ ... }` | 隔离子网格，可附固定尺寸选项 |
+| `(h)` / `(v)` | 横向/纵向参考线；块继承外围方向 |
+| `(n)` / `(p)` | 普通计算/整数坐标分配 |
+| `(pf)` / `(pc)` / `(pl)` | 取整余量优先分配至前/中/后 |
+| `(100pt)` | 设置网格计算大小 |
+| `($WIDTH)` / `($HEIGHT)` | 当前范围宽高作为网格大小 |
+| `#` / `//` | 行尾注释 |
+
+未定大小变量内的百分比与弹性空间保留至使用处计算；指定大小的变量按声明方向计算并固定，因此捕获可跨横纵轴复用。填充至少重复一次；外围有弹性空间时只重复一次。填充体不能包含未定大小的弹性空间或另一个填充。
+
+像素模式先分配顶层段的整数长度，再按每个子块获配的长度缩放并取整内部坐标，保持共用端点一致。此规则有独立测试；不宣称和 GuideGuide 所有嵌套取整场景逐像素相同。
+
+## 单位与运算
+
+支持 `pt px mm cm in pc ft yd m ag %`、常见英文单位全名，以及 `5p6`（5 picas + 6 points）。1 px = 1 pt；1 ag = 72/14 pt。单位不区分大小写。
+
+支持安全的 `calc(...)` 尺寸运算：
+
+```text
+calc(1in - 12pt)
+calc((100% - 24mm) / 3)
+calc(2 * 3mm)
+```
+
+加减时裸数字采用文档单位；乘除时裸数字作为倍数。两个尺寸不能相乘，除数必须为非零纯数。支持括号，不支持函数、脚本或属性访问。`calc(...)` 是 gridloom 的扩展语法，不承诺可导出为 GuideGuide 语法。
+
+## 表单字段内的简写
+
+边距、宽高、间距字段支持尺寸、`~`、`|`，也支持 `calc(...)`。例如：
+
+- 两列，列宽 `10mm | ~ | 10mm`：每列两侧有 10 mm 内间距线。
+- 栏距 `2mm | 2mm`：在 4 mm 栏距中央加线。
+- 右边距 `10mm | 5mm`：从右往左计算；下边距同样从下往上计算。
+
+全部弹性段共同分配该轴剩余空间。固定网格的对齐包含两侧边距；“包含网格外边界”添加网格外侧线。数量留空且填写固定宽高时自动填满；数量 0 仅关闭该轴的行列，边距仍绘制。重置表单会清空参数，空表单默认生成范围外框。
+
+预设会保留尺寸单位；加载到其他标尺单位的文档时，不改变已有固定尺寸，百分比仍随新范围计算。
+
+## 限制与互通
+
+文本最多 50,000 字符，字段最多 512 字符，嵌套最多 24 层，单次固定重复最多 1,000，展开最多 20,000 项，所有画板单次最多 5,000 条参考线。未知语法明确报错。
+
+导入导出使用 gridloom JSON 格式。不包含 GuideGuide 私有预设迁移，不保证完全兼容其全部历史语法。InDesign、MCP 属于后续适配范围。
+
+公开参考：
+- https://guideguide.me/documentation/grid-notation
+- https://guideguide.me/documentation/grid-notation-variables
+- https://guideguide.me/documentation/grid-notation-blocks
+- https://guideguide.me/documentation/grid-notation-repeating-commands
+- https://guideguide.me/documentation/grid-notation-options
+- https://guideguide.me/documentation/the-grid-tab
+- https://guideguide.me/documentation/supported-units
+
+## 经典版式起点
+
+新增单栏正文、双栏、三栏及 2×4、4×5、4×8 模块预设，使用相对边距与间隔适配对象和画板。它们是参考瑞士平面设计网格方法的独立起点，不是书中案例尺寸的复刻。参考书目：Josef Müller-Brockmann，《Grid systems in graphic design》，Niggli：https://niggli.ch/en/products/rastersysteme-fur-die-visuelle-gestaltung 。

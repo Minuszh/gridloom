@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: GPL-3.0-only
+(function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.GridloomI18n=api;})(typeof globalThis==='object'?globalThis:this,function(){
+ 'use strict';
+ const zh={'Lock gridloom layer':'锁定 gridloom 图层','Show gridloom layer':'显示 gridloom 图层','gridloom layer locked.':'gridloom 图层已锁定。','gridloom layer unlocked.':'gridloom 图层已解锁。','gridloom layer shown.':'gridloom 图层已显示。','gridloom layer hidden.':'gridloom 图层已隐藏。',Add:'添加','Lock / unlock guides':'锁定 / 解锁参考线','Guide lock toggled.':'已切换参考线锁定状态。',
+'Reading column':'单栏正文','Editorial · 2 columns':'双栏编辑版式','Editorial · 3 columns':'三栏编辑版式','Modules · 2 × 4':'模块网格 · 2 × 4','Modules · 4 × 5':'模块网格 · 4 × 5','Modules · 4 × 8':'模块网格 · 4 × 8','Syntax examples':'语法与示例','syntaxIntro':'每行描述一组参考线。| 在当前位置画线，数字表示移动距离，~ 平分剩余空间。','syntaxThirds':'三等分：四条竖向参考线。复制下面一行即可使用。','syntaxBaseline':'基线：每隔 16 pt 添加一条横线，直到填满范围。','syntaxMore':'(v) 竖线，(h) 横线；$name 定义变量，*3 重复三次，* 重复填满，{ } 组合命令。尺寸可写 mm、pt、px 或 %；不写单位时跟随文档。',
+  'Browser only · Illustrator not connected':'浏览器模式 · 未连接 Illustrator','Quick guides':'快捷参考线','Mode':'模式',
+  Grid:'网格',Custom:'自定义',Saved:'预设',Left:'左',Center:'中',Right:'右',Top:'上',Middle:'中',Bottom:'下',Clear:'清除','Show / hide':'显示 / 隐藏',
+  Scope:'范围',Auto:'自动','Active artboard':'当前画板',Selection:'选中对象','All artboards':'所有画板',Refresh:'刷新',Margins:'边距',Link:'联动',Columns:'列',Rows:'行',Count:'数量',Width:'宽度',Height:'高度',Gutter:'间距',Syntax:'语法',
+  syntaxHelp:'| 参考线 · ~ 弹性空间 · $ 变量 · *3 重复 · * 填满 · { } 分组 · (v)/(h) 方向 · # 注释',
+  'Built-in presets':'内置预设','Choose a preset…':'选择预设…','12 columns':'十二栏','Modular grid':'模块网格','Rule of thirds':'三分法','Golden ratio':'黄金比例',Fibonacci:'斐波那契',Baseline:'基线网格','16:9 frame':'16:9 比例',Import:'导入',Export:'导出',
+  'Position & settings':'位置与设置',Horizontal:'水平位置',Vertical:'垂直位置','Guide length':'参考线长度',Artboard:'画板','Scope bounds':'范围边界','Write mode':'生成方式','Replace this grid':'替换此范围网格',Append:'追加','Object bounds':'对象边界',Geometry:'几何边界','Include stroke':'包含描边','Decimal places':'小数位数','Clear target':'清理对象','gridloom guides only':'仅 gridloom 参考线','All guides in scope':'范围内全部参考线','Include scope edges':'包含范围边界','Preset name':'预设名称',Cancel:'取消',Save:'保存','Save preset':'保存预设','Add guides':'生成参考线',Edit:'编辑',Delete:'删除',
+  'Reset form':'重置表单','Include outer edges':'包含网格外边界','No saved presets':'尚未保存预设','Working…':'正在处理…','{n} guides':'{n} 条参考线','{n} artboards':'{n} 个画板','Browser only':'浏览器模式',
+  'Created {n}; replaced {r}.':'已生成 {n} 条，替换 {r} 条。','Removed {n} guides.':'已清除 {n} 条参考线。','Added {n} guides.':'已添加 {n} 条参考线。','Guide visibility toggled.':'已切换参考线显示。','Preset saved.':'已保存预设。','Imported {n} presets.':'已导入 {n} 个预设。',
+  'Cannot save locally. Export a backup.':'无法保存至本地，请导出备份。','Stored presets could not be read.':'无法读取本地预设。','No scope available':'无可用范围',
+  'Clear ALL guides in this scope, including manually created guides?':'清除当前范围内全部参考线，包括手动创建的参考线？',
+  'Left edge':'左边界','Vertical center':'垂直中心','Right edge':'右边界','Top edge':'上边界','Horizontal center':'水平中心','Bottom edge':'下边界',
+  'Bare values use document units ({unit}).':'无单位数字采用文档单位（{unit}）。'
+ };
+ const en={syntaxIntro:"Each line describes a grid. | places a guide, a number moves a distance, and ~ shares the remaining space.",syntaxThirds:"Thirds: four vertical guides. Copy this line to try it.",syntaxBaseline:"Baseline: repeat a horizontal guide every 16 pt across the scope.",syntaxMore:"(v) vertical, (h) horizontal; $name defines a variable, *3 repeats three times, * fills the scope, and { } groups commands. Use mm, pt, px or %. Bare values use document units.",syntaxHelp:'| Guide · ~ Flexible space · $ Variable · *3 Repeat · * Fill · { } Block · (v)/(h) Direction · # Comment'};
+ const errors={'请先生成 gridloom 参考线':'Create gridloom guides first',
+  '无法创建原生参考线':'Could not create a native guide',
+  '运算嵌套过深':'Arithmetic is nested too deeply','无效运算表达式':'Invalid arithmetic expression','运算单位不匹配':'Incompatible arithmetic units','不能除以零':'Cannot divide by zero','尺寸字段过长':'Size field is too long','内置变量不支持捕获':'Built-in variables do not support captures','捕获块不存在':'Capture block does not exist','捕获不能用于变量声明':'A capture cannot declare a variable',
+  '所有画板合计不能超过 5000 条参考线':'At most 5,000 guides across all artboards',
+  '请先打开文档并刷新范围':'Open a document and refresh the scope',
+  '未知单位':'Unknown unit','无效尺寸':'Invalid size','尺寸超出可计算范围':'Size exceeds the supported range',
+  '边距或间距超出可用空间':'Margins or gutters exceed the available space',
+  '行列数量必须为 0–1000 的整数':'Counts must be integers from 0 to 1,000',
+  '固定尺寸必须大于零':'Fixed sizes must be positive','固定尺寸无法放入，或网格数量过多':'Fixed cells do not fit, or there are too many cells',
+  '间距过大，单元格尺寸必须大于零':'Gutters are too large; cell size must be positive','固定尺寸超出可用范围':'This object or artboard is too small for these settings. Reduce margins, gutters or cell sizes.',
+  '精度应为 0–6 位':'Precision must be from 0 to 6','参考线过多，请减少行列或重复次数':'Too many guides; reduce counts or repetitions',
+  '无效参考线坐标':'Invalid guide coordinate','范围尺寸必须大于零':'Scope dimensions must be positive','未知快捷操作':'Unknown quick action',
+  '语法文本过长':'Notation is too long','无法识别':'Unexpected character','块嵌套过深':'Blocks are nested too deeply','无效网格选项':'Invalid grid option','缺少右括号':'Missing closing parenthesis','缺少右花括号':'Missing closing brace','此处需要尺寸、变量或参考线':'Expected a size, variable or guide','重复次数应为 1–1000 的整数':'Repeat count must be an integer from 1 to 1,000','不能覆盖内置变量':'Built-in variables cannot be redefined','变量重复定义':'Duplicate variable definition','多余的右花括号':'Unexpected closing brace','展开内容过多':'Expansion limit exceeded',
+  '尺寸变量必须定义固定大小':'Size variables must have an explicit size','变量循环引用或嵌套过深':'Circular variable reference or excessive nesting','变量循环引用':'Circular variable reference','未定义变量':'Undefined variable','网格嵌套过深':'Grids are nested too deeply','网格尺寸必须大于零':'Grid size must be positive','嵌套填充不能用于重复填充':'A fill cannot contain another fill','一个网格只能包含一个自动填充':'A grid can contain only one fill','弹性空间不能自动重复填充':'A fill cannot contain flexible space','填充内容必须有正尺寸':'A fill must have a positive fixed size','固定尺寸超过可用空间':'Fixed sizes exceed available space',
+  '无效预设名称':'Invalid preset name','无效预设模式':'Invalid preset mode','无效预设单位':'Invalid preset unit','无效边距':'Invalid margins','无效尺寸字段':'Invalid size field','无效位置':'Invalid position','无效参考线长度':'Invalid guide length','无效精度':'Invalid precision','无效语法文本':'Invalid notation','预设文件过大':'Preset file is too large','不支持的预设格式':'Unsupported preset format','未知预设':'Unknown preset','最多保存 100 个预设':'At most 100 presets can be saved','文件过大':'File is too large','预设总数超过 100':'Preset count exceeds 100',
+  '请先打开 Illustrator 文档':'Open an Illustrator document first','无法读取剪切蒙版边界':'Cannot read clipping-mask bounds','选中组没有可测量对象':'The selected group has no measurable objects','请选择对象，而非文字插入点':'Select an object, not a text insertion point','请先选择对象':'Select an object first','选区需要具有宽度和高度':'The selection must have width and height','操作已过期，请重新生成':'This operation expired; generate again','当前文档已切换，请重新生成':'The active document changed; generate again','选区或画板已变化，请重新生成':'The selection or artboard changed; generate again','文档单位已变化，请重新生成':'Document units changed; generate again','请先解锁并显示 gridloom 图层':'Unlock and show the gridloom layer first','网格范围不匹配':'Grid scope mismatch','无效参考线列表':'Invalid guide list','无效参考线':'Invalid guide','坐标超出范围':'Coordinate is out of range','仅支持水平或垂直参考线':'Only horizontal or vertical guides are supported','一次操作最多生成 5000 条参考线':'At most 5,000 guides per operation','范围内有锁定参考线，请先解锁':'Unlock the guides in scope first','一次操作最多清除 5000 条参考线':'At most 5,000 guides can be cleared at once','恢复未完成，请检查文档或使用撤销':'Recovery was incomplete; inspect the document or undo','未知操作':'Unknown operation','浏览器预览不能修改文档，请在 Illustrator 中打开面板':'Browser mode cannot change documents; open the panel in Illustrator','上一操作仍在执行':'The previous operation is still running','Illustrator 脚本执行失败':'Illustrator script execution failed'
+ };
+ function create(locale){
+  const language=/^zh(?:[-_]|$)/i.test(locale||'')?'zh':'en';
+  const t=(key,args={})=>((language==='zh'?zh[key]:en[key])||key).replace(/\{(\w+)\}/g,(_,k)=>args[k]??'{'+k+'}');
+  function error(message){if(language==='zh')return String(message).replace('固定尺寸超出可用范围','当前对象或画板放不下这组网格，请减小边距、间距或行列尺寸。');let text=String(message);for(const key of Object.keys(errors).sort((a,b)=>b.length-a.length))text=text.split(key).join(errors[key]);return text.replace(/（(\d+:\d+)）/g,' ($1)').replace(/[「」]/g,'"').replace(/：/g,': ').replace(/；/g,'; ');}
+  function apply(doc){doc.documentElement.lang=language==='zh'?'zh-CN':'en';doc.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));for(const attribute of ['placeholder','aria'])doc.querySelectorAll('[data-i18n-'+attribute+']').forEach(el=>el.setAttribute(attribute==='aria'?'aria-label':attribute,t(el.getAttribute('data-i18n-'+attribute))));}
+  return {language,t,error,apply};
+ }
+ return {create};
+});

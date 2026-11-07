@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="25.11mm" height="29.09mm" viewBox="0 0 71.19 82.46">
+ <g fill="#b6b6b6">
+  <rect x="8.74" y="75.72" width="13.29" height="6.74"/>
+  <rect x="24.02" y="8.74" width="2.93" height="64.98"/>
+  <rect x="24.02" y="75.72" width="2.93" height="6.74"/>
+  <rect x="24.02" width="2.93" height="6.74"/>
+  <rect x="28.95" width="13.28" height="6.74"/>
+  <rect y="75.72" width="6.74" height="6.74"/>
+  <rect y="8.74" width="6.74" height="64.98"/>
+  <rect x="28.95" y="8.74" width="13.28" height="64.98"/>
+  <rect x="8.74" width="13.29" height="6.74"/>
+  <rect x="8.74" y="8.74" width="13.29" height="64.98"/>
+  <rect width="6.74" height="6.74"/>
+  <rect x="64.45" y="75.72" width="6.74" height="6.74"/>
+  <rect x="49.16" y="75.72" width="13.28" height="6.74"/>
+  <rect x="64.45" y="8.74" width="6.74" height="64.98"/>
+  <rect x="64.45" width="6.74" height="6.74"/>
+  <rect x="49.16" y="8.74" width="13.28" height="64.98"/>
+  <rect x="28.95" y="75.72" width="13.28" height="6.74"/>
+  <rect x="44.24" y="75.72" width="2.93" height="6.74"/>
+  <rect x="44.24" y="8.74" width="2.93" height="64.98"/>
+  <rect x="49.16" width="13.28" height="6.74"/>
+  <rect x="44.24" width="2.93" height="6.74"/>
+ </g>
+</svg>

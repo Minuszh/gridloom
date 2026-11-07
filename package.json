@@ -1,0 +1,18 @@
+{
+  "name": "gridloom",
+  "version": "0.3.11",
+  "private": true,
+  "description": "Native-minded grids and guides for Adobe Illustrator",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node --test test/*.test.cjs",
+    "test:ui": "node scripts/test-browser.cjs",
+    "check": "node scripts/check.cjs",
+    "install:dev": "node scripts/install.cjs",
+    "preview": "node scripts/serve.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "GPL-3.0-only"
+}

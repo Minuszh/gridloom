@@ -1,0 +1,12 @@
+dist/
+.DS_Store
+node_modules/
+*.zxp
+*.p12
+.debug
+
+release/
+*.pfx
+*.key
+.env
+.env.*
