@@ -40,6 +40,7 @@ async function main(){
  assert(await evaluate(`!document.querySelector('[title],[data-tooltip]')`),'Hover tooltips must be absent');
  assert(await evaluate(`document.querySelectorAll('.quick svg').length===7`),'Quick actions must use icons');
  assert(await evaluate(`document.getElementById('apply').disabled`),'Preview must disable document writes');
+ assert(await evaluate(`document.querySelectorAll('[data-builtin]').length===0`),'Presets must be deferred until first visit');
  await stableTabs();
  for(const width of [260,320,400]){await send('Emulation.setDeviceMetricsOverride',{width,height:950,deviceScaleFactor:1,mobile:false});assert(await evaluate(`document.documentElement.scrollWidth<=innerWidth`),'Horizontal overflow at '+width);}
  await evaluate(`document.getElementById('cols').value='6';document.getElementById('cols').dispatchEvent(new Event('input',{bubbles:true}))`);
@@ -98,6 +99,8 @@ async function main(){
  assert(await evaluate(`document.getElementById('lock-guides').getAttribute('aria-pressed')==='true'`),'Lock state failed');
  await evaluate(`document.getElementById('visibility').click();new Promise(resolve=>setTimeout(resolve,30))`);
  assert(await evaluate(`document.getElementById('visibility').getAttribute('aria-pressed')==='false'&&getComputedStyle(document.getElementById('visibility')).opacity==='0.45'`),'Hidden state must be gray');
+ await evaluate(`window.previousLockIcon=document.querySelector('#lock-guides svg');window.dispatchEvent(new Event('focus'));new Promise(resolve=>setTimeout(resolve,30))`);
+ assert(await evaluate(`document.querySelector('#lock-guides svg')===previousLockIcon`),'Unchanged state should retain its icon node');
  await evaluate(`layerState.locked=false;layerState.visible=true;window.dispatchEvent(new Event('focus'));new Promise(resolve=>setTimeout(resolve,30))`);
  assert(await evaluate(`document.getElementById('lock-guides').getAttribute('aria-pressed')==='false'&&document.getElementById('visibility').getAttribute('aria-pressed')==='true'`),'External layer changes must synchronize');
  await evaluate(`window.originalPlan=Gridloom.plan;window.planCalls=0;Gridloom.plan=(...args)=>{planCalls++;return originalPlan(...args);};document.getElementById('tab-grid').click();document.getElementById('tab-presets').click();document.getElementById('tab-grid').click();Gridloom.plan=originalPlan;`);

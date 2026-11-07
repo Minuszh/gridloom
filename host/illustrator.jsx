@@ -100,10 +100,6 @@ var GridloomHost = (function () {
         for(i=0;i<data.points.length;i++){p=path.pathPoints.add();p.anchor=data.points[i].anchor;p.leftDirection=data.points[i].left;p.rightDirection=data.points[i].right;p.pointType=data.points[i].type;}
         path.guides=true;check(path.guides===true, '无法创建原生参考线');path.note=data.note;path.name=data.name;path.hidden=data.hidden;path.locked=data.locked;return path;
     }
-    function timeLabel() {
-        var d=new Date();function pad(n){return n<10?'0'+n:String(n);}
-        return pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    }
     function execute(payload, clearing) {
         var state=verified(payload.token), doc=state.doc, newPaths=[], newGroups=[], oldGroups=[], removed=[], toRemove=[], layerInfo=null, oldLayer=doc.activeLayer;
         var i,j,k,p,batch=String(new Date().getTime())+'-'+serial, plans=payload.plans || [],total=0,keys={},areas=state.list;
@@ -138,7 +134,7 @@ var GridloomHost = (function () {
             for(i=0;i<plans.length;i++) {
                 if(!plans[i].lines.length)continue;
                 var group=layerInfo.layer.groupItems.add();newGroups.push(group);
-                group.name=areas[i].name+' · '+timeLabel();
+                group.name=areas[i].name;
                 group.note='gridloom:group|'+plans[i].key+'|'+batch;
                 for(j=0;j<plans[i].lines.length;j++){
                     var line=plans[i].lines[j];p=group.pathItems.add();newPaths.push(p);

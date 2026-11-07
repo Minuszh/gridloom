@@ -14,14 +14,13 @@ window.GridloomIcons={mount(t){
   unlock:'<rect x="3" y="7" width="10" height="7"/><path d="M5 7V5a3 3 0 0 1 6 0"/>',
   refresh:'<path d="M13 6a5.2 5.2 0 1 0 0 4M13 2v4H9"/>',
   link:'<path d="M6 4H4a4 4 0 0 0 0 8h2m4-8h2a4 4 0 0 1 0 8h-2M5 8h6"/>',
-  lock:'<rect x="3" y="7" width="10" height="7"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/>',
-  save:'<path d="M4 2h8v12l-4-3-4 3V2Z"/>'
+  lock:'<rect x="3" y="7" width="10" height="7"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/>'
  };
  const svg=name=>'<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false">'+shapes[name]+'</svg>';
- this.set=(button,name)=>{button.innerHTML=svg(name);};
- document.querySelectorAll('[data-quick]').forEach(button=>{button.removeAttribute('data-i18n');button.innerHTML=svg(button.dataset.quick);button.classList.add('icon-button');});
+ this.set=(button,name)=>{if(button.dataset.icon===name)return;button.dataset.icon=name;button.innerHTML=svg(name);};
+ document.querySelectorAll('[data-quick]').forEach(button=>{button.removeAttribute('data-i18n');this.set(button,button.dataset.quick);button.classList.add('icon-button');});
  for(const [id,name,label] of [['clear','clear','Clear'],['visibility','eye','Show / hide'],['lock-guides','lock','Lock / unlock guides'],['reset','refresh','Reset form']]){
-  const button=document.getElementById(id);button.removeAttribute('data-i18n');button.innerHTML=svg(name);button.setAttribute('aria-label',t(label));button.classList.add('icon-button');
+  const button=document.getElementById(id);button.removeAttribute('data-i18n');this.set(button,name);button.setAttribute('aria-label',t(label));button.classList.add('icon-button');
  }
  const linked=document.getElementById('linked'),label=linked.parentElement,span=label.querySelector('span');
  span.removeAttribute('data-i18n');span.innerHTML=svg('link');linked.setAttribute('aria-label',t('Link'));label.classList.add('icon-check');

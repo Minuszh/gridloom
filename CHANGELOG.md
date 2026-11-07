@@ -1,7 +1,16 @@
 # Changelog / 更新记录
 
-以下为本地开发版本，尚未作为 GitHub Releases 发布。
-These are local development versions, not published GitHub Releases.
+0.3.12 为首次公开预发布，早期版本为本地开发记录。
+0.3.12 is the first public pre-release; earlier entries document local development.
+
+## 0.3.12 — 2026-11-07
+
+- 分组名称仅保留画板名，移除时间。
+  Use artboard names for groups, without timestamps.
+- 预设首次打开时绘制；复用状态图标，合并预设加载逻辑，清理重复样式。
+  Render presets on first visit, reuse state icons, share preset loading, and remove redundant styles.
+- 更新双语 README 排版。
+  Refresh both README layouts.
 
 ## 0.3.11 — 2026-11-07
 

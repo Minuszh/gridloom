@@ -2,9 +2,9 @@
 
 [中文](releasing.md) · [Back to README](../README.en.md)
 
-Local Git has been initialized on `main`, with no commits or remote configured yet. These are instructions to follow, not a record of an upload or release.
+Source repository: `https://github.com/Minuszh/gridloom`. Build releases from committed source.
 
-## 1. Create the repository
+## 1. Initial repository setup (skip for an existing repository)
 
 Create an empty GitHub repository named `gridloom`, without generating a README, LICENSE, or .gitignore. Choose public or private visibility.
 
@@ -46,18 +46,18 @@ For the macOS / Linux shell example below, set `GRIDLOOM_CERT_PATH`, `GRIDLOOM_C
 
 ```sh
 mkdir -p release
-ZXPSignCmd -sign dist release/gridloom-0.3.10.zxp "$GRIDLOOM_CERT_PATH" "$GRIDLOOM_CERT_PASSWORD" -tsa "$GRIDLOOM_TSA_URL"
-ZXPSignCmd -verify release/gridloom-0.3.10.zxp
+ZXPSignCmd -sign dist release/gridloom-0.3.12.zxp "$GRIDLOOM_CERT_PATH" "$GRIDLOOM_CERT_PASSWORD" -tsa "$GRIDLOOM_TSA_URL"
+ZXPSignCmd -verify release/gridloom-0.3.12.zxp
 ```
 
-Signature verification is not functional testing. Install the package using a compatible CEP ZXP installer in a test environment with `PlayerDebugMode` disabled. Include the tested installer's name and official link in the release notes. The project currently has no bundled installer, automatic updates, or verified signed package.
+Signature verification is not functional testing. Install the package using a compatible CEP ZXP installer in a test environment with `PlayerDebugMode` disabled. Include the tested installer's name and official link in the release notes. The project currently has no bundled installer, automatic updates, and its 0.3.12 package has passed signature and timestamp verification; installer acceptance testing remains.
 
 ## 4. Upload a GitHub Release
 
-1. Commit validated source and tag that commit `v0.3.10`.
+1. Commit validated source and tag that commit `v0.3.12`.
 2. Open **Releases → Draft a new release** and choose the tag and intended commit.
 3. Provide Chinese and English release notes, installation steps, supported / tested environments, and known limitations.
-4. Attach `gridloom-0.3.10.zxp`. Optionally add SHA-256 checksums. Label any unsigned ZIP as development-only.
+4. Attach `gridloom-0.3.12.zxp`. Optionally add SHA-256 checksums. Label any unsigned ZIP as development-only.
 5. Select **This is a pre-release** for the initial release, review the draft, and publish.
 
 GitHub's generated source ZIP is not an extension installer. Release packages should correspond to a fixed source commit; later fixes need a new version and tag. See [GitHub's release guide](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).

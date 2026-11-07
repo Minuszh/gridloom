@@ -1,55 +1,58 @@
-# gridloom
+<div align="center">
+  <img src="assets/icon.svg" width="48" alt="gridloom" />
+  <h1>gridloom</h1>
+  <p>This plugin was developed with Codex.</p>
+  <p>A compact panel for drawing grids and guides in Adobe Illustrator.</p>
+  <p><sub>CEP 12 &nbsp; / &nbsp; Illustrator &nbsp; / &nbsp; GPL-3.0</sub></p>
+  <p><a href="README.md">中文</a> · <b>English</b> &nbsp; · &nbsp; <a href="https://github.com/Minuszh/gridloom/releases">Download</a></p>
+</div>
 
-**[中文](README.md) · English**
+---
 
-This plugin was developed with Codex.
+## From objects to grids
 
-A compact panel for drawing grids and guides in Adobe Illustrator.
+Select objects to use their bounds, or leave the selection empty to use the active artboard. Enter your dimensions and generate.
 
-**0.3.11** · CEP 12 · Chinese / English · GPL-3.0
+| Grid | Actions | Presets |
+| :--- | :--- | :--- |
+| Margins, rows, columns, gutters, alignment | Append, replace, edge and center guides | 13 built-in design grids |
+| Fixed sizes, percentages, mixed units | One group per generation, named after its artboard | Save, edit, import, export |
+| Variables, flexible space, repeated patterns | Layer locking, visibility, scoped clearing | Reading columns, editorial layouts, modular grids |
 
-## Features
+The panel follows Illustrator's language, font, and theme, with grayscale icons. No hover tooltips or persistent counts; text appears only for errors.
 
-- Uses selected objects as the scope, or the active artboard when nothing is selected.
-- Creates native Illustrator guides from margins, rows, columns, fixed sizes, gutters, and alignment.
-- Accepts values such as `10px`, `3mm`, and `5%`. Bare numbers follow the document ruler units.
-- Each generation creates a group named after its artboard and time, inside the `gridloom` layer.
-- Appends or replaces grids, adds quick edge and center guides, and clears guides in the current scope.
-- Includes 13 grid presets and supports saving, editing, deleting, importing, and exporting your own.
-- Custom notation supports variables, flexible space, repeats, and groups. See the [notation reference (Chinese)](docs/notation.md).
-- Lock and eye buttons control the `gridloom` layer. Bright means locked / visible; gray means unlocked / hidden.
+## Install
 
-The panel follows Illustrator's language, font, and theme, with grayscale icons. Text status appears only for errors, with no hover tooltips or persistent counts.
+1. Download `gridloom-0.3.12.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
+2. Drag the file into [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/).
+3. Restart Illustrator and open **Window → Extensions → gridloom**.
 
-A row or column count of `0` still creates margin guides. Leave the count blank and enter a fixed size to fill the scope. `1 px = 1 pt`. If Illustrator hides guides globally, show them again in Illustrator.
+Uses CEP 12, with a manifest range of Illustrator 29.5.1–30.x. Selected native operations have been tested on macOS Apple Silicon / Illustrator 30.8.2.
 
-## Installation
+<details>
+<summary>Install from source</summary>
 
-The current version is a CEP panel for Illustrator 29.5.1–30.x. Selected document operations have been tested on macOS Apple Silicon / Illustrator 30.8.2. See the [test log (Chinese)](docs/testing.md) for platform testing.
-
-Local builds require Node.js 22 or later. No dependency installation is needed. From the project directory:
+Requires Node.js 22 or later. No dependency installation is needed.
 
 ```sh
 npm run build
 npm run install:dev
 ```
 
-Enable CEP 12 debug mode to load the unsigned local build.
+Unsigned local builds use CEP debug mode. See [testing and local installation (Chinese)](docs/testing.md).
 
-macOS:
+</details>
 
-```sh
-defaults write com.adobe.CSXS.12 PlayerDebugMode 1
-```
+## Quick notes
 
-Windows (Command Prompt):
-
-```bat
-reg add HKCU\Software\Adobe\CSXS.12 /v PlayerDebugMode /t REG_SZ /d 1 /f
-```
-
-Restart Illustrator and open gridloom under Window → Extensions.
+- Enter dimensions such as `10px`, `3mm`, or `5%`. Bare numbers follow document ruler units. `1 px = 1 pt`.
+- A count of `0` retains margin guides. Leave the count blank and enter a fixed size to fill the scope.
+- Each generation creates a group inside the `gridloom` layer. Multiple groups on the same artboard share its name.
+- Lock and eye buttons affect only the `gridloom` layer. Bright means locked / visible; gray means unlocked / hidden.
+- Explore the [notation examples (Chinese)](docs/notation.md) and [changelog](CHANGELOG.md).
 
 ## License
 
-Licensed under [GNU GPL v3.0](LICENSE) (`GPL-3.0-only`). You may use, modify, and distribute it, including commercially. When distributing a modified version, provide the corresponding source under GPL-3.0. Private modifications and use do not require public release.
+[GNU GPL v3.0](LICENSE) · `GPL-3.0-only`
+
+You may use, modify, and distribute it, including commercially. Distribute modified versions with corresponding source under GPL-3.0. Private modifications do not require public release.

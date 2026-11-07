@@ -90,13 +90,13 @@ test('each append creates a separate named artboard group; replacing retains oth
  function apply(scope,mode){const c=e.call('context',{scope}).value;return e.call('apply',{token:c.token,mode,plans:c.contexts.map(a=>({key:a.key,lines:[[a.bounds[0]+10,a.bounds[1],a.bounds[0]+10,a.bounds[3]]]}))});}
  assert.equal(apply('all','append').ok,true);assert.equal(apply('artboard','append').ok,true);
  assert.equal(e.run('doc.layers[1].groupItems.length'),3);
- assert.match(e.run('doc.layers[1].groupItems[0].name'),/^A · /);
- assert.match(e.run('doc.layers[1].groupItems[1].name'),/^B · /);
+ assert.equal(e.run('doc.layers[1].groupItems[0].name'),'A');
+ assert.equal(e.run('doc.layers[1].groupItems[1].name'),'B');
  assert.equal(apply('artboard','replace').ok,true);
  assert.equal(e.run('doc.layers[1].groupItems.length'),2);
  assert.equal(e.run('doc.pathItems.length'),2);
  const c=e.call('context',{}).value;assert.equal(e.call('clear',{token:c.token,clearMode:'owned'}).ok,true);
- assert.equal(e.run('doc.layers[1].groupItems.length'),1);assert.match(e.run('doc.layers[1].groupItems[0].name'),/^B · /);
+ assert.equal(e.run('doc.layers[1].groupItems.length'),1);assert.equal(e.run('doc.layers[1].groupItems[0].name'),'B');
 });
 test('failed replacement restores guides to their original group',()=>{
  const e=environment();let c=e.call('context',{}).value;

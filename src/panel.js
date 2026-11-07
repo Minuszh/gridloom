@@ -9,7 +9,7 @@
  const $=id=>document.getElementById(id),all=s=>Array.from(document.querySelectorAll(s));
  const fields=['cols','rows','colWidth','rowHeight','gutterX','gutterY','alignX','alignY','guideLength'];
  let mode='grid',context=null,presets=[],editing=-1,working=false,refreshId=0,notationUnit=null;
- let planCache=null,refreshTask=null,lastHint='';
+ let planCache=null,refreshTask=null,lastHint='',presetsMounted=false;
  function guideButtons(state){
   for(const [id,key,on,off,label] of [['lock-guides','locked','lock','unlock','Lock gridloom layer'],['visibility','visible','eye','eyeOff','Show gridloom layer']]){
    const button=$(id),known=Boolean(state?.exists);button.disabled=working||!H.available||!known;
@@ -28,7 +28,7 @@
  }
  const currentPreset=name=>({name,mode,config:config(),notation:$('notation').value});
  function store(){try{localStorage.setItem('gridloom.presets.v1',P.encode(presets));}catch(error){status(t('Cannot save locally. Export a backup.'),true);}}
- function tab(value){if(value!=='presets')mode=value;all('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===value)));all('[role=tabpanel]').forEach(p=>{p.hidden=p.id!=='page-'+value;p.setAttribute('aria-hidden',String(p.hidden));});render();}
+ function tab(value){if(value==='presets')mountPresets();else mode=value;all('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===value)));all('[role=tabpanel]').forEach(p=>{p.hidden=p.id!=='page-'+value;p.setAttribute('aria-hidden',String(p.hidden));});render();}
  all('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
  async function read(){
   if(!H.available)return {name:'Sample',unit:'mm',contexts:[{key:'artboard:0',name:'A2',bounds:[0,594*G.UNITS.mm,420*G.UNITS.mm,0],artboard:[0,594*G.UNITS.mm,420*G.UNITS.mm,0]}]};
@@ -50,7 +50,7 @@
  }
  function render(){
   try{
-   const c=config(),plans=compute(c),first=context.contexts[0],b=first.bounds,u=G.UNITS[c.unit];
+   const c=config(),plans=compute(c),u=G.UNITS[c.unit];
    const hint=t('Bare values use document units ({unit}).',{unit:context.unit||'pt'});
    if(hint!==lastHint){lastHint=hint;all('#page-grid input:not([type=checkbox]):not([type=number])').forEach(el=>el.setAttribute('aria-description',hint));}
    const count=plans.reduce((n,p)=>n+p.lines.length,0);
@@ -71,7 +71,8 @@
  fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['precision','border']).forEach(k=>$(k).onchange=render);
  $('notation').oninput=()=>{notationUnit=null;render();};
 
- function load(p){setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;tab(p.mode);}
+ function selectPreset(p){setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;render();}
+ function load(p){selectPreset(p);tab(p.mode);}
  function thumbnail(p){
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 100 128');svg.setAttribute('aria-hidden','true');
   const sample={bounds:[0,594,420,0],artboard:[0,594,420,0]};
@@ -81,14 +82,18 @@
  }
  function card(p,label,fn){const b=document.createElement('button');b.className='preset-card';b.append(thumbnail(p));const text=document.createElement('span');text.textContent=label;b.append(text);b.onclick=()=>{all('.preset-card').forEach(el=>el.removeAttribute('aria-pressed'));b.setAttribute('aria-pressed','true');fn();};return b;}
  const builtinNames=[["reading", "Reading column"], ["editorial2", "Editorial · 2 columns"], ["editorial3", "Editorial · 3 columns"], ["modules8", "Modules · 2 × 4"], ["modules20", "Modules · 4 × 5"], ["modules32", "Modules · 4 × 8"], ["columns", "12 columns"], ["modular", "Modular grid"], ["thirds", "Rule of thirds"], ["golden", "Golden ratio"], ["fibonacci", "Fibonacci"], ["baseline", "Baseline"], ["ratio", "16:9 frame"]];
- for(const [name,label] of builtinNames){const p=P.builtIn(name);const b=card(p,t(label),()=>{setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;render();});b.dataset.builtin=name;$('preset-cards').append(b);}
- function list(){const box=$('preset-list');box.replaceChildren();presets.forEach((p,i)=>{const row=document.createElement('div');row.className='preset';row.append(card(p,p.name,()=>{setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;render();}));const actions=document.createElement('div');actions.className='preset-tools';for(const [label,fn] of [[t('Edit'),()=>{editing=i;load(p);$('preset-name').value=p.name;$('save-form').hidden=false;}],[t('Delete'),()=>{presets.splice(i,1);list();store();}]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;actions.append(b);}row.append(actions);box.append(row);});}
+ function mountPresets(){
+  if(presetsMounted)return;presetsMounted=true;
+ for(const [name,label] of builtinNames){const p=P.builtIn(name);const b=card(p,t(label),()=>selectPreset(p));b.dataset.builtin=name;$('preset-cards').append(b);}
+  list();
+ }
+ function list(){if(!presetsMounted)return;const box=$('preset-list');box.replaceChildren();presets.forEach((p,i)=>{const row=document.createElement('div');row.className='preset';row.append(card(p,p.name,()=>selectPreset(p)));const actions=document.createElement('div');actions.className='preset-tools';for(const [label,fn] of [[t('Edit'),()=>{editing=i;load(p);$('preset-name').value=p.name;$('save-form').hidden=false;}],[t('Delete'),()=>{presets.splice(i,1);list();store();}]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;actions.append(b);}row.append(actions);box.append(row);});}
  $('save').onclick=()=>{editing=-1;$('preset-name').value='';$('save-form').hidden=false;$('preset-name').focus();};$('save-cancel').onclick=()=>$('save-form').hidden=true;
  $('save-confirm').onclick=()=>{try{compute();const p=P.validate(currentPreset($('preset-name').value));G.assert(editing>=0||presets.length<100,'最多保存 100 个预设');if(editing>=0)presets[editing]=p;else presets.push(p);list();$('save-form').hidden=true;status(t('Preset saved.'));store();}catch(error){status(error.message,true);}};
  $('export').onclick=()=>{const url=URL.createObjectURL(new Blob([P.encode(presets)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='gridloom-presets.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  $('import').onclick=()=>$('import-file').click();$('import-file').onchange=async()=>{try{const file=$('import-file').files[0];if(!file)return;G.assert(file.size<1000000,'文件过大');const incoming=P.decode(await file.text());G.assert(presets.length+incoming.length<=100,'预设总数超过 100');presets.push(...incoming);list();status(t('Imported {n} presets.',{n:incoming.length}));store();}catch(error){status(error.message,true);}finally{$('import-file').value='';}};
  try{const raw=localStorage.getItem('gridloom.presets.v1');if(raw)presets=P.decode(raw);}catch(error){status(t('Stored presets could not be read.'),true);}
- list();$('preview-note').hidden=H.available;if(!H.available)['apply','clear','visibility','lock-guides',...all('[data-quick]').map(b=>{b.disabled=true;return '';})].filter(Boolean).forEach(k=>$(k).disabled=true);
+ $('preview-note').hidden=H.available;if(!H.available)['apply','clear','visibility','lock-guides',...all('[data-quick]').map(b=>{b.disabled=true;return '';})].filter(Boolean).forEach(k=>$(k).disabled=true);
  // Tabs share one content height. Only structural changes request a host resize.
  let frame=0,lastFit='';
  function fitPanel(){

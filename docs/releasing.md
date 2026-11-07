@@ -2,9 +2,9 @@
 
 [English](releasing.en.md) · [返回 README](../README.md)
 
-当前项目已初始化本地 Git（`main`），尚无提交或远程地址。本指南是待执行步骤，不表示已经推送或发布。
+源码仓库：`https://github.com/Minuszh/gridloom`。发布时从已提交的源码构建安装包。
 
-## 1. 创建仓库
+## 1. 首次创建仓库（已创建时跳过）
 
 在 GitHub 新建空仓库 `gridloom`，不要自动生成 README、LICENSE 或 .gitignore。选择公开或私有仓库。
 
@@ -46,18 +46,18 @@ npm run test:ui
 
 ```sh
 mkdir -p release
-ZXPSignCmd -sign dist release/gridloom-0.3.10.zxp "$GRIDLOOM_CERT_PATH" "$GRIDLOOM_CERT_PASSWORD" -tsa "$GRIDLOOM_TSA_URL"
-ZXPSignCmd -verify release/gridloom-0.3.10.zxp
+ZXPSignCmd -sign dist release/gridloom-0.3.12.zxp "$GRIDLOOM_CERT_PATH" "$GRIDLOOM_CERT_PASSWORD" -tsa "$GRIDLOOM_TSA_URL"
+ZXPSignCmd -verify release/gridloom-0.3.12.zxp
 ```
 
-签名验证不等于功能验证。使用兼容的 CEP ZXP 安装器在关闭 `PlayerDebugMode` 的测试环境中验证该包，再在发布说明中写明所用安装器及其官方地址。当前项目没有内置安装器或自动更新功能，也尚未生成已验证的签名包。
+签名验证不等于功能验证。使用兼容的 CEP ZXP 安装器在关闭 `PlayerDebugMode` 的测试环境中验证该包，再在发布说明中写明所用安装器及其官方地址。当前项目没有内置安装器或自动更新功能，0.3.12 安装包已通过签名和时间戳验证，安装器实机验收待完成。
 
 ## 4. 上传 GitHub Release
 
-1. 提交已验证的源代码，用其提交创建 `v0.3.10` 标签。
+1. 提交已验证的源代码，用其提交创建 `v0.3.12` 标签。
 2. 打开仓库 **Releases → Draft a new release**，选定标签与对应提交。
 3. 填写中英文更新说明、安装步骤、支持 / 已验证环境和已知限制。
-4. 附加 `gridloom-0.3.10.zxp`。可同时附上 SHA-256 校验文件；如提供未签名 ZIP，明确标注仅供开发测试。
+4. 附加 `gridloom-0.3.12.zxp`。可同时附上 SHA-256 校验文件；如提供未签名 ZIP，明确标注仅供开发测试。
 5. 首轮勾选 **This is a pre-release**，检查草稿后发布。
 
 GitHub 自动生成的源码 ZIP 不是扩展安装包。发布后的包对应固定源码提交；后续修复使用新版本和新标签。参见 [GitHub 官方 Release 指南](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)。
