@@ -137,7 +137,8 @@
     // Both pages have the same dimensions: calculate once and translate the second set.
     const dx=bounds[1][0]-l,dy=bounds[1][1]-t;
     const second=first.lines.map(([x1,y1,x2,y2])=>[x1+dx,y1+dy,x2+dx,y2+dy]);
-    return {...first,lines:unique(first.lines.concat(second),config.precision)};
+    const center=mode==='horizontal'?[(l+r)/2,t,(l+r)/2,b]:[l,(t+b)/2,r,(t+b)/2];
+    return {...first,lines:unique(first.lines.concat(second,[center]),config.precision)};
   }
   function plan(config,context){return book(config,context,planPage);}
   function planPage(config, context) {

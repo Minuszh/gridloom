@@ -3,6 +3,13 @@
 0.3.12 为首次公开预发布，早期版本为本地开发记录。
 0.3.12 is the first public pre-release; earlier entries document local development.
 
+## 0.3.16 — 2026-11-07
+
+- 书籍模式自动添加中间分隔参考线，重合线去重。
+  Add a deduplicated central guide in book mode.
+- 默认展开位置与设置，移除生成方式、取消和外边界选项。
+  Expand settings by default and remove write mode, Cancel, and outer-edge controls.
+
 ## 0.3.15 — 2026-11-07
 
 - 参数变化时自动实时编辑，移除勾选框；错误提示不再预留空白。

@@ -20,12 +20,11 @@
   }
  }
  const status=(text,error=false)=>{$('status').textContent=error?I.error(text):text;$('status').classList.toggle('error',error);$('status').setAttribute('aria-hidden',String(!error));};
- function config(){return {unit:mode==='notation'&&notationUnit?notationUnit:(context?.unit||'pt'),margins:Object.fromEntries(['top','right','bottom','left'].map(k=>[k,$('margin-'+k).value])),...Object.fromEntries(fields.map(k=>[k,$(k).value])),precision:3,guideLength:'artboard',border:$('border').checked};}
+ function config(){return {unit:mode==='notation'&&notationUnit?notationUnit:(context?.unit||'pt'),margins:Object.fromEntries(['top','right','bottom','left'].map(k=>[k,$('margin-'+k).value])),...Object.fromEntries(fields.map(k=>[k,$(k).value])),precision:3,guideLength:'artboard',border:false};}
  function setConfig(c){
   const explicit=value=>{try{return G.qualify(value,c.unit);}catch{return value;}};
   for(const k in c.margins)$('margin-'+k).value=explicit(c.margins[k]);
   fields.forEach(k=>$(k).value=['colWidth','rowHeight','gutterX','gutterY'].includes(k)?explicit(c[k]):(k==='book'?(c.book||'none'):c[k]));
-  $('border').checked=c.border;
  }
  const currentPreset=name=>({name,mode,config:config(),notation:$('notation').value});
  function store(){try{localStorage.setItem('gridloom.presets.v1',P.encode(presets));}catch(error){status(t('Cannot save locally. Export a backup.'),true);}}
@@ -62,8 +61,8 @@
    status(t('{n} guides',{n:count})+(plans.length>1?' · '+t('{n} artboards',{n:plans.length}):''));
   }catch(error){if(liveQueue)liveQueue.clear();$('apply').disabled=true;status(error.message,true);}
  }
- async function action(fn){if(working)return;working=true;++refreshId;const controls=all('button,input,select,textarea'),disabled=controls.map(el=>el.disabled);controls.forEach(el=>el.disabled=true);status(t('Working…'));try{if(refreshTask)await refreshTask;await fn();}catch(error){status(error.message,true);}finally{working=false;controls.forEach((el,i)=>el.disabled=disabled[i]);guideButtons(context?.guideState);liveControls();try{$('apply').disabled=!H.available||!!liveFailure||compute().every(p=>!p.lines.length);}catch{$('apply').disabled=true;}}}
- $('apply').onclick=()=>action(async()=>{if(liveSession){await liveQueue.flush(wire(compute()));const result=await H.call('liveCommit',{id:liveSession});context.guideState=result.guideState;await endLive(false);return;}context=await read();const plans=compute();const result=await H.call('apply',{token:context.token,plans:plans.map(p=>({key:p.key,lines:p.lines})),mode:$('write-mode').value});context.guideState=result.guideState;status(t('Created {n}; replaced {r}.',{n:result.count,r:result.removed}));});
+ async function action(fn){if(working)return;working=true;++refreshId;const controls=all('button,input,select,textarea'),disabled=controls.map(el=>el.disabled);controls.forEach(el=>el.disabled=true);status(t('Working…'));try{if(refreshTask)await refreshTask;await fn();}catch(error){if(liveSession)try{await cancelLive();}catch(recovery){error=recovery;}status(error.message,true);}finally{working=false;controls.forEach((el,i)=>el.disabled=disabled[i]);guideButtons(context?.guideState);liveControls();try{$('apply').disabled=!H.available||!!liveFailure||compute().every(p=>!p.lines.length);}catch{$('apply').disabled=true;}}}
+ $('apply').onclick=()=>action(async()=>{if(liveSession){await liveQueue.flush(wire(compute()));const result=await H.call('liveCommit',{id:liveSession});context.guideState=result.guideState;await endLive(false);return;}context=await read();const plans=compute();const result=await H.call('apply',{token:context.token,plans:plans.map(p=>({key:p.key,lines:p.lines})),mode:'replace'});context.guideState=result.guideState;status(t('Created {n}; replaced {r}.',{n:result.count,r:result.removed}));});
  $('clear').onclick=()=>action(async()=>{context=await read();const result=await H.call('clear',{token:context.token,clearMode:'owned'});context.guideState=result.guideState;status(t('Removed {n} guides.',{n:result.removed}));});
  $('lock-guides').onclick=()=>action(async()=>{const state=await H.call('lockGuides');if(context)context.guideState=state;status(t(state.locked?'gridloom layer locked.':'gridloom layer unlocked.'));});
  $('visibility').onclick=()=>action(async()=>{const state=await H.call('visibility');if(context)context.guideState=state;status(t(state.visible?'gridloom layer shown.':'gridloom layer hidden.'));});
@@ -77,7 +76,7 @@
   event.preventDefault();const value=Number((Number(match[2])+(event.key==='ArrowUp'?1:-1)).toFixed(8));
   el.value=match[1]+value+match[3];el.dispatchEvent(new Event('input',{bubbles:true}));
  }));
- fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['border']).forEach(k=>$(k).onchange=changed);
+ fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).forEach(k=>$(k).onchange=changed);
  $('notation').oninput=()=>{notationUnit=null;changed();};
 
  function wire(plans){return plans.map(p=>({key:p.key,lines:p.lines}));}
@@ -94,8 +93,8 @@
   range.onkeydown=e=>{if(e.key==='Escape'){slider.hidden=true;toggle.setAttribute('aria-expanded','false');toggle.focus();}};
  }
  function liveControls(){
-  $('live-cancel').hidden=!liveSession;$('apply').textContent=t('Apply');
-  for(const el of [$('clear'),$('write-mode'),...all('[data-quick]')])el.disabled=working||!!liveSession||!H.available;
+  $('apply').textContent=t('Apply');
+  for(const el of [$('clear'),...all('[data-quick]')])el.disabled=working||!!liveSession||!H.available;
  }
  async function endLive(restore){
   if(liveQueue)await liveQueue.stop();liveQueue=null;liveSession=null;
@@ -105,15 +104,14 @@
  async function cancelLive(){
   if(liveQueue)await liveQueue.stop();await H.call('liveCancel');await endLive(true);
  }
- $('live-cancel').onclick=()=>action(cancelLive);
  function changed(){
   render();
   if(!H.available||working||liveSession||$('status').classList.contains('error'))return;
   const original=settledForm||currentPreset('');
   action(async()=>{
    context=await read();const plans=wire(compute());baseline=original;
-   const result=await H.call('liveBegin',{token:context.token,mode:$('write-mode').value});liveSession=result.id;
-   liveQueue=window.GridloomLive.queue(async plans=>{const key=JSON.stringify(plans);if(key===lastLiveKey)return;const value=await H.call('liveUpdate',{id:liveSession,plans});context.guideState=value.guideState;lastLiveKey=key;},error=>{liveFailure=error;$('apply').disabled=true;status(error.message,true);});
+   const result=await H.call('liveBegin',{token:context.token,mode:'replace'});liveSession=result.id;
+   liveQueue=window.GridloomLive.queue(async plans=>{const key=JSON.stringify(plans);if(key===lastLiveKey)return;const value=await H.call('liveUpdate',{id:liveSession,plans});context.guideState=value.guideState;lastLiveKey=key;},error=>{liveFailure=error;$('apply').disabled=true;status(error.message,true);setTimeout(()=>{if(liveSession&&!working)action(async()=>{await cancelLive();throw error;});},0);});
    liveControls();await liveQueue.flush(plans);
   });
  }

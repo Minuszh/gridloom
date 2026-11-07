@@ -42,6 +42,7 @@ test('book mode draws two equal page grids with page-relative margins and local 
  const c={...cfg(),book:'horizontal',cols:'2',rows:'0',gutterX:'0',margins:{top:'10%',right:'10%',bottom:'10%',left:'10%'}};
  const p=G.plan(c,context);
  assert.equal(p.columns.size,84);
+ assert.equal(p.lines.filter(l=>l.join(',')==='310,900,310,306').length,1);
  for(const line of p.lines){assert(line[0]>=100&&line[2]<=520);assert(line[1]<=900&&line[3]>=306);}
  assert(p.lines.some(l=>l.join(',')==='121,900,121,306'));
  assert(p.lines.some(l=>l.join(',')==='331,900,331,306'));
@@ -52,7 +53,7 @@ test('vertical book mode translates a page downward and notation follows both pa
  const c={...cfg(),book:'vertical'};
  assert.deepEqual(N.compile('| 50% | (h)',context,c).lines,[[100,900,520,900],[100,751.5,520,751.5],[100,603,520,603],[100,454.5,520,454.5]]);
  const single=G.plan({...c,book:'none',guideLength:'selection'}, {...context,bounds:[100,900,520,603],artboard:[100,900,520,603]});
- assert.deepEqual(G.plan(c,context).lines,G.unique(single.lines.concat(single.lines.map(([x,y,z,w])=>[x,y-297,z,w-297])),3));
+ assert.deepEqual(G.plan(c,context).lines,G.unique(single.lines.concat(single.lines.map(([x,y,z,w])=>[x,y-297,z,w-297]),[[100,603,520,603]]),3));
 });
 test('book mode is saved, old presets default off, and invalid modes are rejected',()=>{
  const p=P.builtIn('columns');p.config.book='horizontal';assert.equal(P.decode(P.encode([p]))[0].config.book,'horizontal');

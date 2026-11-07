@@ -36,6 +36,7 @@ async function main(){
  for(let i=0;i<50;i++){if(await evaluate(`document.getElementById('status')?.textContent==='26 guides'`))break;await new Promise(r=>setTimeout(r,100));}
  assert(await evaluate(`document.getElementById('status').textContent==='26 guides'`),'Panel did not initialize');
  assert(await evaluate(`getComputedStyle(document.getElementById('status')).visibility==='hidden'&&document.getElementById('status').getAttribute('aria-hidden')==='true'`),'Routine count must be hidden');
+ assert(await evaluate(`document.getElementById('options').open&&!document.querySelector('#write-mode,#border,#live-cancel')`),'Settings must start open with removed controls absent');
  assert(await evaluate(`!document.getElementById('preview')&&!document.getElementById('unit')`),'Preview and unit selector must be absent');
  assert(await evaluate(`!document.querySelector('[title],[data-tooltip]')`),'Hover tooltips must be absent');
  assert(await evaluate(`document.querySelectorAll('.quick svg').length===7`),'Quick actions must use icons');
@@ -120,12 +121,9 @@ async function main(){
  assert(await evaluate(`document.getElementById('cols').value==='6'`),'Slider must synchronize exact count');
  await evaluate(`window.liveCalls=[];window.liveBusy=false;window.liveOverlap=false;window.liveInitial=document.getElementById('cols').value;GridloomHostClient.available=true;GridloomHostClient.call=async(method,payload)=>{if(liveBusy)liveOverlap=true;liveBusy=true;liveCalls.push({method,payload});await new Promise(r=>setTimeout(r,15));liveBusy=false;if(method==='context')return {token:'test',unit:'pt',contexts:[{key:'artboard:0',bounds:[0,594,420,0],artboard:[0,594,420,0]}],guideState:{exists:true,locked:false,visible:true}};if(method==='liveBegin')return {id:'test-live'};return {guideState:{exists:true,locked:false,visible:true}};};window.dispatchEvent(new Event('focus'));new Promise(r=>setTimeout(r,50))`);
  await evaluate(`document.getElementById('cols-range').value='7';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));new Promise(r=>setTimeout(r,100))`);
- assert(await evaluate(`!document.getElementById('live-cancel').hidden&&document.getElementById('apply').textContent==='应用'&&document.getElementById('clear').disabled`),'Live session controls failed');
+ assert(await evaluate(`!document.getElementById('live-cancel')&&document.getElementById('apply').textContent==='应用'&&document.getElementById('clear').disabled`),'Live session controls failed');
  await evaluate(`for(const count of [3,4,5,7,8]){document.getElementById('cols-range').value=count;document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));}new Promise(r=>setTimeout(r,200))`);
  assert(await evaluate(`liveCalls.filter(c=>c.method==='liveUpdate').length===2&&!liveOverlap`),'Rapid dragging must coalesce into one serialized update');
- await evaluate(`document.getElementById('live-cancel').click();new Promise(r=>setTimeout(r,100))`);
- assert(await evaluate(`document.getElementById('cols').value===liveInitial&&!document.getElementById('live-edit')&&document.getElementById('live-cancel').hidden&&liveCalls.at(-1).method==='liveCancel'`),'Cancel must restore form and end preview');
- await evaluate(`document.getElementById('cols-range').value='7';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));new Promise(r=>setTimeout(r,100))`);
  await evaluate(`document.getElementById('cols-range').value='9';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('apply').click();new Promise(r=>setTimeout(r,100))`);
  assert(await evaluate(`liveCalls.at(-1).method==='liveCommit'&&!document.getElementById('live-edit')&&document.getElementById('cols').value==='9'&&!liveOverlap`),'Apply must flush the final value before commit');
  await send('Emulation.setDeviceMetricsOverride',{width:320,height:500,deviceScaleFactor:1,mobile:false});
