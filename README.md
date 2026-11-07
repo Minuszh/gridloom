@@ -25,7 +25,7 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.16.zxp`。
+1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.17.zxp`。
 2. 将文件拖入 [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/)。
 3. 重启 Illustrator，在 **窗口 → 扩展功能 → gridloom** 中打开。
 

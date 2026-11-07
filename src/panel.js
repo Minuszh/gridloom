@@ -48,7 +48,17 @@
   G.assert(plans.reduce((n,p)=>n+p.lines.length,0)<=G.LIMIT,'所有画板合计不能超过 5000 条参考线');
   planCache={key,plans};return plans;
  }
+ function syncSettings(){
+  all('[data-position]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.position===$('alignX').value+','+$('alignY').value)));
+  all('[data-book]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.book===$('book').value)));
+ }
+ for(const [y,vertical] of [['start','Top'],['center','Middle'],['end','Bottom']])for(const [x,horizontal] of [['start','Left'],['center','Center'],['end','Right']]){
+  const button=document.createElement('button');button.dataset.position=x+','+y;button.setAttribute('aria-label',t(vertical)+' · '+t(horizontal));
+  button.onclick=()=>{$('alignX').value=x;$('alignY').value=y;changed();};$('position-grid').append(button);
+ }
+ all('[data-book]').forEach(button=>button.onclick=()=>{$('book').value=button.dataset.book;changed();});
  function render(){
+  syncSettings();
   try{
    if(liveFailure)throw liveFailure;
    const c=config(),plans=compute(c),u=G.UNITS[c.unit];
@@ -143,7 +153,7 @@
  let frame=0,lastFit='';
  function fitPanel(){
   cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
-   const width=Math.max(260,window.innerWidth),height=Math.min(Math.ceil($('content-layout').getBoundingClientRect().height+all('main > .quick,main > .tabbar,main > .notice,main > footer').reduce((n,el)=>n+el.getBoundingClientRect().height,0))+2,Math.max(350,screen.availHeight-80));
+   const width=Math.max(260,window.innerWidth),height=Math.min(Math.max(540,Math.ceil($('content-layout').getBoundingClientRect().height+all('main > .quick,main > .tabbar,main > .notice,main > footer').reduce((n,el)=>n+el.getBoundingClientRect().height,0))+20),Math.max(350,screen.availHeight-80));
    const key=width+':'+height;if(!H.available||key===lastFit)return;lastFit=key;
    if(Math.abs(window.innerHeight-height)>2)try{H.resize(width,height);}catch(error){console.warn('Panel resize unavailable',error);}
   });

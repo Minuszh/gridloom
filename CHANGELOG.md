@@ -3,6 +3,13 @@
 0.3.12 为首次公开预发布，早期版本为本地开发记录。
 0.3.12 is the first public pre-release; earlier entries document local development.
 
+## 0.3.17 — 2026-11-07
+
+- 位置改为九宫格，书籍模式改为分段按钮；设置固定展开。
+  Use a nine-point position control and segmented book buttons in a fixed settings section.
+- 默认窗口高度增加到 540，移除设置标题下横线。
+  Increase the default panel height to 540 and remove the divider below the settings heading.
+
 ## 0.3.16 — 2026-11-07
 
 - 书籍模式自动添加中间分隔参考线，重合线去重。

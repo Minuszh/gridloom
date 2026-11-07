@@ -36,7 +36,7 @@ async function main(){
  for(let i=0;i<50;i++){if(await evaluate(`document.getElementById('status')?.textContent==='26 guides'`))break;await new Promise(r=>setTimeout(r,100));}
  assert(await evaluate(`document.getElementById('status').textContent==='26 guides'`),'Panel did not initialize');
  assert(await evaluate(`getComputedStyle(document.getElementById('status')).visibility==='hidden'&&document.getElementById('status').getAttribute('aria-hidden')==='true'`),'Routine count must be hidden');
- assert(await evaluate(`document.getElementById('options').open&&!document.querySelector('#write-mode,#border,#live-cancel')`),'Settings must start open with removed controls absent');
+ assert(await evaluate(`document.getElementById('options').tagName==='SECTION'&&!document.querySelector('#write-mode,#border,#live-cancel')`),'Settings must start open with removed controls absent');
  assert(await evaluate(`!document.getElementById('preview')&&!document.getElementById('unit')`),'Preview and unit selector must be absent');
  assert(await evaluate(`!document.querySelector('[title],[data-tooltip]')`),'Hover tooltips must be absent');
  assert(await evaluate(`document.querySelectorAll('.quick svg').length===7`),'Quick actions must use icons');
@@ -82,8 +82,6 @@ async function main(){
  assert(expanded.request&&expanded.request.height>=expanded.content,'Expanded settings must request enough panel height');
  await send('Emulation.setDeviceMetricsOverride',{width:expanded.request.width,height:expanded.request.height,screenWidth:1600,screenHeight:1000,deviceScaleFactor:1,mobile:false});
  assert(await evaluate(`document.querySelector('main').getBoundingClientRect().bottom<=innerHeight&&document.getElementById('apply').getBoundingClientRect().bottom<=innerHeight`),'Resized panel must display settings and actions fully');
- await evaluate(`document.getElementById('options').open=false;new Promise(resolve=>setTimeout(resolve,100))`);
- assert(await evaluate(`fitRequests.at(-1).height<${expanded.request.height}`),'Closing settings must return to compact height');
  // A docked host can refuse the request. The footer still remains accessible.
  await send('Emulation.setDeviceMetricsOverride',{width:260,height:350,screenWidth:1600,screenHeight:1000,deviceScaleFactor:1,mobile:false});
  await evaluate(`document.getElementById('options').open=true;new Promise(resolve=>setTimeout(resolve,100))`);
@@ -134,6 +132,9 @@ async function main(){
  await evaluate(`document.getElementById('gutterX').value='2.5px';document.getElementById('gutterX').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));`);
  assert(await evaluate(`document.getElementById('gutterX').value==='1.5px'`),'Arrow keys must change dimensions by one');
  assert(await evaluate(`!document.querySelector('#live-edit')&&document.getElementById('status').getBoundingClientRect().height===0`),'Routine status must not reserve footer space');
+ await evaluate(`document.querySelector('[data-position="end,center"]').click();document.querySelector('[data-book="vertical"]').click();`);
+ assert(await evaluate(`document.getElementById('alignX').value==='end'&&document.getElementById('alignY').value==='center'&&document.querySelector('[data-position="end,center"]').getAttribute('aria-pressed')==='true'`),'Position grid must set both alignment axes');
+ assert(await evaluate(`document.getElementById('book').value==='vertical'&&document.querySelector('[data-book="vertical"]').getAttribute('aria-pressed')==='true'&&!document.querySelector('#options summary,#options select')`),'Book buttons and static settings failed');
  console.log('UI passed: collapsible sliders, coalesced live updates, apply/cancel, 260/320/400px, no preview/unit selector, EN/ZH, mixed units, notation/captures/arithmetic errors, preset save, reset, field notation, disabled host writes, zero-row margins, expanding settings, stable tabs/footer, internal list/error scrolling and constrained docked actions.');
  await send('Browser.close',{},null);
 }

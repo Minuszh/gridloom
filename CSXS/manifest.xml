@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="studio.gridloom" ExtensionBundleVersion="0.3.16" ExtensionBundleName="gridloom">
-  <ExtensionList><Extension Id="studio.gridloom.panel" Version="0.3.16"/></ExtensionList>
+<ExtensionManifest Version="7.0" ExtensionBundleId="studio.gridloom" ExtensionBundleVersion="0.3.17" ExtensionBundleName="gridloom">
+  <ExtensionList><Extension Id="studio.gridloom.panel" Version="0.3.17"/></ExtensionList>
   <ExecutionEnvironment>
     <HostList><Host Name="ILST" Version="[29.5.1,30.99]"/></HostList>
     <LocaleList><Locale Code="All"/></LocaleList>
@@ -10,7 +10,7 @@
     <Resources><MainPath>./index.html</MainPath><ScriptPath>./host/illustrator.jsx</ScriptPath></Resources>
     <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
     <UI><Type>Panel</Type><Menu>gridloom</Menu>
-      <Geometry><Size><Width>320</Width><Height>480</Height></Size><MinSize><Width>260</Width><Height>350</Height></MinSize></Geometry>
+      <Geometry><Size><Width>320</Width><Height>540</Height></Size><MinSize><Width>260</Width><Height>350</Height></MinSize></Geometry>
       <Icons><Icon Type="Normal">./assets/icon-dark.png</Icon><Icon Type="RollOver">./assets/icon-dark.png</Icon><Icon Type="DarkNormal">./assets/icon.png</Icon><Icon Type="DarkRollOver">./assets/icon.png</Icon></Icons>
     </UI>
   </DispatchInfo></Extension></DispatchInfoList>

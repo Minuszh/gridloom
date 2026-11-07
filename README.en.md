@@ -25,7 +25,7 @@ Enter counts directly or click the slider icon to adjust them. The canvas update
 
 ## Install
 
-1. Download `gridloom-0.3.16.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
+1. Download `gridloom-0.3.17.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
 2. Drag the file into [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/).
 3. Restart Illustrator and open **Window → Extensions → gridloom**.
 
