@@ -12,7 +12,7 @@
 .pages>[role=tabpanel]{overflow:auto;overscroll-behavior:contain}
 #page-grid[hidden]{display:block!important;visibility:hidden;pointer-events:none}
 #page-notation,#page-presets{position:absolute;inset:0}
-#status{height:2.8em;min-height:2.8em;overflow:auto;overscroll-behavior:contain}
+#status{max-height:2.8em;overflow:auto;overscroll-behavior:contain}
 
 button:focus,input:focus,select:focus,textarea:focus,summary:focus{outline:none;box-shadow:none}
 .icon-check input:checked+span{color:var(--text)}
@@ -30,7 +30,7 @@ html,body{height:100%;overflow:hidden}main{height:100%;display:flex;flex-directi
 #lock-guides:disabled,#visibility:disabled{opacity:.25}
 
 /* Reserve space to keep tabs stable, but display only errors. */
-#status:not(.error){visibility:hidden}
+#status:not(.error){display:none;visibility:hidden}
 
 /* Counts retain exact entry; the optional slider occupies its own row. */
 .count-control{display:flex;align-items:center;background:var(--field,#262626);border:1px solid var(--edge);border-radius:2px;overflow:hidden}
@@ -43,4 +43,4 @@ html,body{height:100%;overflow:hidden}main{height:100%;display:flex;flex-directi
 .count-slider input::-webkit-slider-runnable-track{height:2px;background:var(--edge)}
 .count-slider input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-5px;border:2px solid var(--muted);border-radius:50%;background:var(--surface)}
 .slider-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:.9em}
-.live-control{margin-bottom:2px}
+footer>.actions{margin-top:0}footer>#status.error{margin-bottom:6px}

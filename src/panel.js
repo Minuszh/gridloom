@@ -9,7 +9,7 @@
  const $=id=>document.getElementById(id),all=s=>Array.from(document.querySelectorAll(s));
  const fields=['cols','rows','colWidth','rowHeight','gutterX','gutterY','alignX','alignY','book'];
  let mode='grid',context=null,presets=[],editing=-1,working=false,refreshId=0,notationUnit=null;
- let liveSession=null,liveQueue=null,baseline=null,liveFailure=null,lastLiveKey=null;
+ let liveSession=null,liveQueue=null,baseline=null,liveFailure=null,lastLiveKey=null,settledForm=null;
  let planCache=null,refreshTask=null,lastHint='',presetsMounted=false;
  function guideButtons(state){
   for(const [id,key,on,off,label] of [['lock-guides','locked','lock','unlock','Lock gridloom layer'],['visibility','visible','eye','eyeOff','Show gridloom layer']]){
@@ -38,7 +38,7 @@
  async function refresh(){
   if(working||liveSession)return;if(refreshTask)return refreshTask;
   const request=++refreshId;
-  refreshTask=(async()=>{try{const next=await read();if(request!==refreshId)return;context=next;guideButtons(next.guideState);render();}catch(error){if(request!==refreshId)return;context=null;guideButtons(null);$('apply').disabled=true;status(error.message,true);}})();
+  refreshTask=(async()=>{try{const next=await read();if(request!==refreshId)return;context=next;guideButtons(next.guideState);render();settledForm=currentPreset('');}catch(error){if(request!==refreshId)return;context=null;guideButtons(null);$('apply').disabled=true;status(error.message,true);}})();
   try{await refreshTask;}finally{refreshTask=null;}
  }
  function compute(c=config(),data=context){
@@ -68,10 +68,17 @@
  $('lock-guides').onclick=()=>action(async()=>{const state=await H.call('lockGuides');if(context)context.guideState=state;status(t(state.locked?'gridloom layer locked.':'gridloom layer unlocked.'));});
  $('visibility').onclick=()=>action(async()=>{const state=await H.call('visibility');if(context)context.guideState=state;status(t(state.visible?'gridloom layer shown.':'gridloom layer hidden.'));});
  all('[data-quick]').forEach(b=>{b.setAttribute('aria-label',t(({left:'Left edge',center:'Vertical center',right:'Right edge',top:'Top edge',middle:'Horizontal center',bottom:'Bottom edge'})[b.dataset.quick]));b.onclick=()=>action(async()=>{context=await read();const plans=context.contexts.map(c=>({key:c.key,lines:G.book(config(),c,(settings,page)=>({lines:G.quick(b.dataset.quick,page,settings.guideLength)})).lines}));const result=await H.call('apply',{token:context.token,plans,mode:'append'});context.guideState=result.guideState;status(t('Added {n} guides.',{n:result.count}));});});
- $('reset').onclick=()=>{const c=G.defaults();for(const key of Object.keys(c.margins))c.margins[key]='';for(const key of ['cols','rows','colWidth','rowHeight','gutterX','gutterY'])c[key]='';setConfig(c);$('notation').value='';notationUnit=null;$('save-form').hidden=true;editing=-1;tab('grid');};
- all('#page-grid input:not([type=range])').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)['top','right','bottom','left'].forEach(k=>$('margin-'+k).value=el.value);render();});
- fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['border']).forEach(k=>$(k).onchange=render);
- $('notation').oninput=()=>{notationUnit=null;render();};
+ $('reset').onclick=()=>{const c=G.defaults();for(const key of Object.keys(c.margins))c.margins[key]='';for(const key of ['cols','rows','colWidth','rowHeight','gutterX','gutterY'])c[key]='';setConfig(c);$('notation').value='';notationUnit=null;$('save-form').hidden=true;editing=-1;tab('grid');changed();};
+ all('#page-grid input:not([type=range])').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)['top','right','bottom','left'].forEach(k=>$('margin-'+k).value=el.value);if(el.id==='linked')render();else changed();});
+ all('#page-grid input:not([type])').forEach(el=>el.addEventListener('keydown',event=>{
+  if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')return;
+  const match=el.value.match(/^(\s*)([+-]?(?:\d+\.?\d*|\.\d+))(\s*(?:[a-zA-Z%]+)?\s*)$/);
+  if(!match)return;
+  event.preventDefault();const value=Number((Number(match[2])+(event.key==='ArrowUp'?1:-1)).toFixed(8));
+  el.value=match[1]+value+match[3];el.dispatchEvent(new Event('input',{bubbles:true}));
+ }));
+ fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['border']).forEach(k=>$(k).onchange=changed);
+ $('notation').oninput=()=>{notationUnit=null;changed();};
 
  function wire(plans){return plans.map(p=>({key:p.key,lines:p.lines}));}
  function syncSliders(plans){
@@ -83,32 +90,35 @@
  for(const key of ['cols','rows']){
   const toggle=$(key+'-toggle'),slider=$(key+'-slider'),range=$(key+'-range');
   toggle.onclick=()=>{slider.hidden=!slider.hidden;toggle.setAttribute('aria-expanded',String(!slider.hidden));};
-  range.oninput=()=>{$(key).value=range.value;render();};
+  range.oninput=()=>{$(key).value=range.value;changed();};
   range.onkeydown=e=>{if(e.key==='Escape'){slider.hidden=true;toggle.setAttribute('aria-expanded','false');toggle.focus();}};
  }
  function liveControls(){
-  $('live-edit').checked=!!liveSession;$('live-edit').disabled=working||!H.available;
-  $('live-cancel').hidden=!liveSession;$('apply').textContent=t(liveSession?'Apply':'Add guides');
+  $('live-cancel').hidden=!liveSession;$('apply').textContent=t('Apply');
   for(const el of [$('clear'),$('write-mode'),...all('[data-quick]')])el.disabled=working||!!liveSession||!H.available;
  }
  async function endLive(restore){
   if(liveQueue)await liveQueue.stop();liveQueue=null;liveSession=null;
   if(restore&&baseline){setConfig(baseline.config);$('notation').value=baseline.notation;notationUnit=baseline.config.unit;mode=baseline.mode;tab(mode);}
-  baseline=null;liveFailure=null;lastLiveKey=null;liveControls();status('');
+  baseline=null;liveFailure=null;lastLiveKey=null;settledForm=currentPreset('');liveControls();status('');
  }
  async function cancelLive(){
   if(liveQueue)await liveQueue.stop();await H.call('liveCancel');await endLive(true);
  }
  $('live-cancel').onclick=()=>action(cancelLive);
- $('live-edit').onchange=()=>action(async()=>{
-  if(liveSession){await cancelLive();return;}
-  context=await read();const plans=wire(compute());baseline=currentPreset('');
-  const result=await H.call('liveBegin',{token:context.token,mode:$('write-mode').value});liveSession=result.id;
-  liveQueue=window.GridloomLive.queue(async plans=>{const key=JSON.stringify(plans);if(key===lastLiveKey)return;const value=await H.call('liveUpdate',{id:liveSession,plans});context.guideState=value.guideState;lastLiveKey=key;},error=>{liveFailure=error;$('apply').disabled=true;status(error.message,true);});
-  liveControls();await liveQueue.flush(plans);
- });
+ function changed(){
+  render();
+  if(!H.available||working||liveSession||$('status').classList.contains('error'))return;
+  const original=settledForm||currentPreset('');
+  action(async()=>{
+   context=await read();const plans=wire(compute());baseline=original;
+   const result=await H.call('liveBegin',{token:context.token,mode:$('write-mode').value});liveSession=result.id;
+   liveQueue=window.GridloomLive.queue(async plans=>{const key=JSON.stringify(plans);if(key===lastLiveKey)return;const value=await H.call('liveUpdate',{id:liveSession,plans});context.guideState=value.guideState;lastLiveKey=key;},error=>{liveFailure=error;$('apply').disabled=true;status(error.message,true);});
+   liveControls();await liveQueue.flush(plans);
+  });
+ }
  window.addEventListener('beforeunload',()=>{if(liveQueue)liveQueue.stop().then(()=>H.call('liveCancel')).catch(()=>{});});
- function selectPreset(p){setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;render();}
+ function selectPreset(p){setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;changed();}
  function load(p){selectPreset(p);tab(p.mode);}
  function thumbnail(p){
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 100 128');svg.setAttribute('aria-hidden','true');

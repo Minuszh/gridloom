@@ -3,6 +3,13 @@
 0.3.12 为首次公开预发布，早期版本为本地开发记录。
 0.3.12 is the first public pre-release; earlier entries document local development.
 
+## 0.3.15 — 2026-11-07
+
+- 参数变化时自动实时编辑，移除勾选框；错误提示不再预留空白。
+  Start live editing on parameter changes, remove the checkbox and unused status space.
+- 尺寸输入支持方向键增减 1，并保留单位和边距联动。
+  Arrow keys step dimensions by 1, preserving units and linked margins.
+
 ## 0.3.14 — 2026-11-07
 
 - 数量框支持直接输入，点击滑条图标展开灰度滑条。

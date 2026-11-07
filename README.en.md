@@ -21,11 +21,11 @@ Select objects to use their bounds, or leave the selection empty to use the acti
 
 The panel follows Illustrator's language, font, and theme, with grayscale icons. No hover tooltips or persistent counts; text appears only for errors.
 
-Enter counts directly or click the slider icon to adjust them. Turn on **Live edit** to update the canvas as you change parameters. **Apply** keeps the result; **Cancel** restores the previous grid. Book mode repeats the same settings across left/right or top/bottom pages.
+Enter counts directly or click the slider icon to adjust them. The canvas updates automatically as you change parameters. **Apply** keeps the result; **Cancel** restores the previous grid. Book mode repeats the same settings across left/right or top/bottom pages. Press ↑/↓ in dimension fields to add/subtract 1 while retaining the unit.
 
 ## Install
 
-1. Download `gridloom-0.3.14.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
+1. Download `gridloom-0.3.15.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
 2. Drag the file into [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/).
 3. Restart Illustrator and open **Window → Extensions → gridloom**.
 
