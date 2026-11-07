@@ -85,7 +85,27 @@
     }
     return {vars,grids};
   }
-  function compile(source,context,config){return G.book(config,context,(c,page)=>compilePage(source,page,c));}
+  const shortKeys={margin:'margin',margins:'margin','边距':'margin',columns:'cols',cols:'cols','列':'cols',rows:'rows','行':'rows'};
+  function shortForm(source,config){
+    if(!/^\s*(?:margin[s]?|columns|cols|rows|边距|列|行)\s*[:：]/im.test(source))return null;
+    G.assert(source.length<=50000,'语法文本过长');
+    const c={...config,margins:{...config.margins}},seen=new Set();
+    source.split(/\r?\n/).forEach((line,index)=>{
+      line=line.replace(/#.*$/,'').trim();if(!line)return;
+      const match=line.match(/^([^:：]+)[:：](.*)$/),key=match&&shortKeys[match[1].trim().toLowerCase()],at={line:index+1,column:1};
+      if(!key)fail('无法识别',at);if(seen.has(key))fail('重复设置',at);seen.add(key);
+      const values=match[2].split(/[,，]/).map(v=>v.trim());
+      if(key==='margin'){
+        if(![1,2,4].includes(values.length)||values.some(v=>!v))fail('边距需要 1、2 或 4 个尺寸',at);
+        const [top,right=top,bottom=top,left=right]=values.map(v=>/^(auto|自动)$/i.test(v)?'':v);c.margins={top,right,bottom,left};
+      }else{
+        if(values.length>3||!values[0])fail('行列格式为数量、尺寸、间距',at);
+        const auto=v=>!v||/^(auto|自动)$/i.test(v)?'':v;
+        c[key]=auto(values[0]);c[key==='cols'?'colWidth':'rowHeight']=auto(values[1]);c[key==='cols'?'gutterX':'gutterY']=values[2]||'0';
+      }
+    });return c;
+  }
+  function compile(source,context,config){const short=shortForm(source,config);return short?G.plan(short,context):G.book(config,context,(c,page)=>compilePage(source,page,c));}
   function compilePage(source,context,config){
     const program=parse(source),[left,top,right,bottom]=context.bounds;
     const width=right-left,height=top-bottom;G.assert(width>0&&height>0,'范围尺寸必须大于零');let budget=0;
@@ -189,5 +209,38 @@
     }
     return {lines:G.unique(lines,config.precision)};
   }
-  return {parse,compile};
+  function pageContext(context,config){
+    const bounds=context.bounds.slice();
+    if(config.book==='horizontal')bounds[2]=(bounds[0]+bounds[2])/2;
+    if(config.book==='vertical')bounds[3]=(bounds[1]+bounds[3])/2;
+    return {...context,bounds,artboard:config.book&&config.book!=='none'?bounds:context.artboard};
+  }
+  function positions(lines,context,vertical){
+    return [...new Set(lines.filter(l=>vertical?l[0]===l[2]:l[1]===l[3]).map(l=>Number((vertical?l[0]-context.bounds[0]:context.bounds[1]-l[1]).toFixed(3))))].sort((a,b)=>a-b);
+  }
+  function steps(values){let previous=0;return values.map(value=>{const delta=Number((value-previous).toFixed(3));previous=value;return (delta?delta+'pt ':'')+'|';}).join(' ');}
+  function fromGrid(config,context,language='en'){
+    const keys=language==='zh'?['边距','列','行']:['margin','columns','rows'];
+    const dimension=value=>G.qualify(value,config.unit),m=['top','right','bottom','left'].map(k=>dimension(config.margins[k]));
+    const margins=m.every(v=>v===m[0])?[m[0]]:m[0]===m[2]&&m[1]===m[3]?m.slice(0,2):m;
+    const lines=[keys[0]+': '+margins.map(v=>v||'auto').join(', ')];
+    for(const [i,count,size,gap] of [[1,'cols','colWidth','gutterX'],[2,'rows','rowHeight','gutterY']]){
+      const value=config[count]===''?'auto':config[count];
+      lines.push(keys[i]+': '+value+(value==='0'?'':', '+(dimension(config[size])||'auto')+', '+(dimension(config[gap])||'0')));
+    }
+    return lines.join('\n');
+  }
+  function toGrid(source,context,config){
+    const short=shortForm(source,config);if(short){G.plan(short,context);return short;}
+    const page=pageContext(context,config),lines=compilePage(source,page,config),result={...config,margins:{top:'',right:'',bottom:'',left:''},alignX:'start',alignY:'start',border:false};
+    for(const vertical of [true,false]){
+      const values=positions(lines.lines,page,vertical),extent=vertical?page.bounds[2]-page.bounds[0]:page.bounds[1]-page.bounds[3];
+      const [count,size,gutter,start,end]=vertical?['cols','colWidth','gutterX','left','right']:['rows','rowHeight','gutterY','top','bottom'];
+      result[count]=values.length>1?'1':'0';result[size]='';result[gutter]='0';
+      if(values.length){result.margins[start]=values[0]+'pt';if(values.length>1){result.margins[end]='calc(100% - '+values.at(-1)+'pt)';const step=Number((values[1]-values[0]).toFixed(3));if(values.length<=1001&&values.every((v,i)=>Math.abs(v-values[0]-i*step)<0.001)){result[count]=String(values.length-1);result[size]=step+'pt';}else result[size]=steps(values.slice(1).map(v=>Number((v-values[0]).toFixed(3))));}}
+      G.assert(result[size].length<=512,'尺寸字段过长');
+    }
+    return result;
+  }
+  return {parse,compile,fromGrid,toGrid};
 });

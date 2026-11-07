@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 /* ExtendScript / ES3 only. No filesystem or arbitrary-script RPC. */
-if(typeof GridloomHost!=='undefined' && GridloomHost.liveEditing && GridloomHost.dispatch('liveCancel',{}).indexOf('\"ok\":false')>=0)throw new Error('请先取消实时编辑');
+var GridloomSessionId=typeof GridloomSessionId==='string'?GridloomSessionId:String(new Date().getTime())+'-'+String(Math.random());
 var GridloomHost = (function () {
     var pending = null, live = null, serial = 0, prefix = 'gridloom:1|';
     function encode(value) {
@@ -20,6 +20,7 @@ var GridloomHost = (function () {
     function rect(value) { return [Number(value[0]), Number(value[1]), Number(value[2]), Number(value[3])]; }
     function union(a, b) { return a ? [Math.min(a[0],b[0]),Math.max(a[1],b[1]),Math.max(a[2],b[2]),Math.min(a[3],b[3])] : b; }
     function itemBounds(item, visible) {
+        if(item.guides===true)return null;
         var result = null, i, child;
         if (item.typename === 'GroupItem') {
             if (item.clipped) {
@@ -30,8 +31,8 @@ var GridloomHost = (function () {
                 }
                 throw new Error('无法读取剪切蒙版边界');
             }
-            for(i=0;i<item.pageItems.length;i++) result=union(result,itemBounds(item.pageItems[i],visible));
-            check(result, '选中组没有可测量对象'); return result;
+            for(i=0;i<item.pageItems.length;i++){var childBounds=itemBounds(item.pageItems[i],visible);if(childBounds)result=union(result,childBounds);}
+            return result;
         }
         check(item.geometricBounds, '请选择对象，而非文字插入点');
         return rect(visible ? item.visibleBounds : item.geometricBounds);
@@ -43,7 +44,8 @@ var GridloomHost = (function () {
             for(i=0;i<doc.artboards.length;i++) result.push({key:'artboard:'+i,name:doc.artboards[i].name,bounds:rect(doc.artboards[i].artboardRect),artboard:rect(doc.artboards[i].artboardRect)});
         } else if(scope==='selection' || scope==='auto' && selected && selected.length) {
             check(selected && selected.length, '请先选择对象');
-            for(i=0;i<selected.length;i++) bounds=union(bounds,itemBounds(selected[i],options.visibleBounds));
+            for(i=0;i<selected.length;i++){var measured=itemBounds(selected[i],options.visibleBounds);if(measured)bounds=union(bounds,measured);}
+            if(!bounds&&scope==='auto')return [{key:'artboard:'+index,name:doc.artboards[index].name,bounds:board,artboard:board}];
             check(bounds && bounds[2]>bounds[0] && bounds[1]>bounds[3], '选区需要具有宽度和高度');
             result.push({key:'selection:'+bounds.join(','),name:doc.artboards[index].name+' · '+(/zh/i.test(app.locale || '')?'选区':'Selection'),bounds:bounds,artboard:board});
         } else result.push({key:'artboard:'+index,name:doc.artboards[index].name,bounds:board,artboard:board});
@@ -57,7 +59,13 @@ var GridloomHost = (function () {
     function read(options) {
         var doc=document(), list=contexts(doc,options), token=String(new Date().getTime())+'-'+(++serial);
         pending={doc:doc,options:options,list:list,token:token,unit:rulerUnit(doc)};
-        return {token:token,name:doc.name,contexts:list,unit:pending.unit,guideState:guideState(doc)};
+        return {token:token,name:doc.name,contexts:list,unit:pending.unit,guideState:guideState(doc),savedGrid:savedGrid(doc,list[0].key)};
+    }
+    function savedGrid(doc,key){
+        var layer=guideLayer(doc),tag='gridloom:group|'+key+'|',marker='\ngridloom:settings|',g,at;
+        if(!layer)return null;
+        for(var i=0;i<layer.groupItems.length;i++){g=layer.groupItems[i];if(g.pageItems.length&&g.note.indexOf(tag)===0){at=g.note.indexOf(marker);if(at>=0)return g.note.substring(at+marker.length);}}
+        return null;
     }
     function verified(token) {
         check(pending && pending.token===token, '操作已过期，请重新生成');
@@ -93,6 +101,16 @@ var GridloomHost = (function () {
         if(layer) {check(!layer.locked && layer.visible, '请先解锁并显示 gridloom 图层');return {layer:layer,created:false};}
         layer=doc.layers.add();layer.name='gridloom';return {layer:layer,created:true};
     }
+    function checkGuideAccess(path){
+        var node=path,hidden=false;
+        while(node&&node.typename!=='Document'){
+            check(!node.locked,'范围内有锁定参考线，请先解锁');
+            if(node.hidden||node.visible===false)hidden=true;
+            node=node.parent;
+        }
+        // Illustrator reports hidden guides as non-editable even when nothing is locked.
+        check(path.editable||hidden,'参考线暂时不可编辑，请检查视图中的参考线锁定');
+    }
     function pathData(path) {
         var points=[],i,p;
         for(i=0;i<path.pathPoints.length;i++){p=path.pathPoints[i];points.push({anchor:rectPoint(p.anchor),left:rectPoint(p.leftDirection),right:rectPoint(p.rightDirection),type:p.pointType});}
@@ -118,10 +136,17 @@ var GridloomHost = (function () {
         }
         check(total<=5000,'一次操作最多生成 5000 条参考线');return {total:total,keys:keys};
     }
+    // Keep only UUIDs between CEP calls; native object wrappers can become stale.
+    function lookup(doc,id){try{return doc.getPageItemFromUuid(id);}catch(error){return null;}}
+    function sessionDocument(session){
+        for(var i=0;i<app.documents.length;i++)if(app.documents[i]===session.state.doc)return app.documents[i];
+        return null;
+    }
     function liveState(id) {
         check(live && live.id===id,'实时编辑已结束，请重新开启');
         verifyState(live.state);
-        check(!live.layer.layer.locked && live.layer.layer.visible,'请先解锁并显示 gridloom 图层');
+        var layer=guideLayer(document());
+        check(layer&&!layer.locked&&layer.visible,'请先解锁并显示 gridloom 图层');
         return live;
     }
     function beginLive(payload) {
@@ -130,73 +155,86 @@ var GridloomHost = (function () {
         for(i=0;i<n;i++){
             p=doc.pathItems[i];if(!p.guides||!owned(p))continue;
             for(j=0;j<state.list.length;j++)if(p.note.indexOf(prefix+state.list[j].key+'|')===0){
-                check(!p.locked&&p.editable,'范围内有锁定参考线，请先解锁');originals.push({path:p,hidden:p.hidden});break;
+                checkGuideAccess(p);originals.push({id:p.uuid,hidden:p.hidden});break;
             }
         }
         check(originals.length<=5000,'一次操作最多清除 5000 条参考线');
-        var oldLayer=doc.activeLayer;
-        try{live={id:'live-'+(++serial),state:state,layer:layerFor(doc),originals:originals,groups:[],pools:[],plans:null};}
+        var oldLayer=doc.activeLayer,info;
+        try{info=layerFor(doc);live={id:'live-'+(++serial),state:state,created:info.created,originals:originals,groups:[],pools:[],plans:null};}
         finally{doc.activeLayer=oldLayer;}
         pending=null;return {id:live.id};
     }
     function cancelLive() {
         if(!live)return {};
-        var session=live,i,j,failures=0;
-        for(i=0;i<session.originals.length;i++)try{session.originals[i].path.hidden=session.originals[i].hidden;}catch(error){failures++;}
-        for(i=0;i<session.pools.length;i++)for(j=session.pools[i].length-1;j>=0;j--)try{session.pools[i][j].remove();session.pools[i].splice(j,1);}catch(error2){failures++;}
-        for(i=session.groups.length-1;i>=0;i--)if(session.groups[i])try{if(!session.groups[i].pageItems.length){session.groups[i].remove();session.groups[i]=null;}}catch(error3){failures++;}
-        if(session.layer.created)try{if(!session.layer.layer.pageItems.length)session.layer.layer.remove();}catch(error4){failures++;}
+        var session=live,doc=sessionDocument(session),i,j,p,layer,failures=0;
+        if(!doc){live=null;return {};}
+        for(i=0;i<session.originals.length;i++)try{p=lookup(doc,session.originals[i].id);if(p)p.hidden=session.originals[i].hidden;}catch(error){failures++;}
+        for(i=0;i<session.pools.length;i++)for(j=session.pools[i].length-1;j>=0;j--)try{
+            p=lookup(doc,session.pools[i][j]);if(p)p.remove();session.pools[i].splice(j,1);
+        }catch(error2){failures++;}
+        for(i=session.groups.length-1;i>=0;i--)try{
+            p=lookup(doc,session.groups[i]);if(p&&!p.pageItems.length)p.remove();
+        }catch(error3){failures++;}
+        layer=guideLayer(doc);
+        if(session.created&&layer)try{if(!layer.pageItems.length)layer.remove();}catch(error4){failures++;}
         check(!failures,'预览恢复未完成，请检查图层并重试取消');
         live=null;app.redraw();return {};
     }
     function updateLive(payload) {
-        var session=liveState(payload.id),plans=payload.plans,state=session.state,i,j,p,line,pool,group,oldLayer=state.doc.activeLayer;
+        var session=liveState(payload.id),plans=payload.plans,state=session.state,doc=document(),i,j,p,line,pool,group,oldLayer=doc.activeLayer;
         validatePlans(plans,state.list);
+        // Validate the entire session before changing anything after undo/deletion.
+        for(i=0;i<session.originals.length;i++)check(lookup(doc,session.originals[i].id),'实时编辑已结束，请重新开启');
+        for(i=0;i<session.pools.length;i++)for(j=0;j<session.pools[i].length;j++)check(lookup(doc,session.pools[i][j]),'实时编辑已结束，请重新开启');
         try{
             for(i=0;i<plans.length;i++){
-                group=session.groups[i];pool=session.pools[i]||[];session.pools[i]=pool;
-                if(!group && plans[i].lines.length){group=session.layer.layer.groupItems.add();session.groups[i]=group;group.name=state.list[i].name;group.note='gridloom:preview|'+session.id;}
+                group=session.groups[i]?lookup(doc,session.groups[i]):null;pool=session.pools[i]||[];session.pools[i]=pool;
+                if(!group && plans[i].lines.length){group=guideLayer(doc).groupItems.add();session.groups[i]=group.uuid;group.name=state.list[i].name;group.note='gridloom:preview|'+session.id;}
                 for(j=0;j<plans[i].lines.length;j++){
-                    line=plans[i].lines[j];p=pool[j];
-                    if(!p){p=group.pathItems.add();pool.push(p);p.filled=false;p.stroked=false;}
+                    line=plans[i].lines[j];p=pool[j]?lookup(doc,pool[j]):null;
+                    if(!p){p=group.pathItems.add();pool.push(p.uuid);p.filled=false;p.stroked=false;}
                     var previous=session.plans&&session.plans[i].lines[j];
-                    if(!previous||line[0]!==previous[0]||line[1]!==previous[1]||line[2]!==previous[2]||line[3]!==previous[3])p.setEntirePath([[line[0],line[1]],[line[2],line[3]]]);
-                    if(!p.guides)p.guides=true;check(p.guides===true,'无法创建原生参考线');if(p.hidden)p.hidden=false;
+                    if(!previous||line[0]!==previous[0]||line[1]!==previous[1]||line[2]!==previous[2]||line[3]!==previous[3]){
+                        // Avoid rebuilding an existing guide's native path representation.
+                        if(previous&&p.pathPoints.length===2){for(var pointIndex=0;pointIndex<2;pointIndex++){var anchor=[line[pointIndex*2],line[pointIndex*2+1]],point=p.pathPoints[pointIndex];point.anchor=anchor;point.leftDirection=anchor;point.rightDirection=anchor;}}
+                        else p.setEntirePath([[line[0],line[1]],[line[2],line[3]]]);
+                    }
+                    if(!p.guides)p.guides=true;
+                    p=lookup(doc,pool[j]);check(p&&p.guides===true,'无法创建原生参考线');if(p.hidden)p.hidden=false;
                 }
-                // Reuse surplus guides while dragging rather than repeatedly allocating objects.
-                for(j=plans[i].lines.length;j<pool.length;j++)if(!pool[j].hidden)pool[j].hidden=true;
+                for(j=plans[i].lines.length;j<pool.length;j++){p=lookup(doc,pool[j]);if(p&&!p.hidden)p.hidden=true;}
             }
-            for(i=0;i<session.originals.length;i++)if(!session.originals[i].path.hidden)session.originals[i].path.hidden=true;
-            session.plans=plans;app.redraw();return {guideState:guideState(state.doc)};
+            for(i=0;i<session.originals.length;i++){p=lookup(doc,session.originals[i].id);if(p&&!p.hidden)p.hidden=true;}
+            session.plans=plans;app.redraw();return {guideState:guideState(doc)};
         }catch(error){cancelLive();throw error;}
-        finally{try{state.doc.activeLayer=oldLayer;}catch(ignore){}}
+        finally{try{doc.activeLayer=oldLayer;}catch(ignore){}}
     }
     function commitLive(payload) {
-        var session=liveState(payload.id),removed=[],parents=[],count=0,i,j,p,data,group;
+        var session=liveState(payload.id),doc=document(),removed=[],parents=[],count=0,i,j,p,data,group;
         check(session.plans,'请先调整网格');
         try{
-            // Finalize the existing preview group, retaining its identity.
             for(i=0;i<session.pools.length;i++){
                 var pool=session.pools[i],lines=session.plans[i].lines;
-                for(j=pool.length-1;j>=lines.length;j--){pool[j].remove();pool.pop();}
-                group=session.groups[i];if(group){
+                for(j=pool.length-1;j>=lines.length;j--){p=lookup(doc,pool[j]);if(p)p.remove();pool.pop();}
+                group=lookup(doc,session.groups[i]);if(group){
                     if(!lines.length){group.remove();session.groups[i]=null;}
-                    else {group.note='gridloom:group|'+session.plans[i].key+'|'+session.id;
-                        for(j=0;j<pool.length;j++){pool[j].note=prefix+session.plans[i].key+'|'+session.id;count++;}}
+                    else {group.note='gridloom:group|'+session.plans[i].key+'|'+session.id+(payload.settings?'\ngridloom:settings|'+payload.settings:'');
+                        for(j=0;j<pool.length;j++){p=lookup(doc,pool[j]);check(p,'实时编辑已结束，请重新开启');p.note=prefix+session.plans[i].key+'|'+session.id;count++;}}
                 }
             }
             for(i=0;i<session.originals.length;i++){
-                p=session.originals[i].path;data=pathData(p);data.hidden=session.originals[i].hidden;
-                p.remove();removed.push({index:i,data:data});parents.push(data.parent);
+                p=lookup(doc,session.originals[i].id);check(p,'实时编辑已结束，请重新开启');data=pathData(p);data.hidden=session.originals[i].hidden;
+                if(p.parent.typename==='GroupItem')parents.push(p.parent.uuid);
+                p.remove();removed.push({index:i,data:data});
             }
         }catch(error){
             var restoreFailures=0;
-            for(i=0;i<removed.length;i++)try{session.originals[removed[i].index].path=restore(removed[i].data);}catch(restoreError){restoreFailures++;}
+            for(i=0;i<removed.length;i++)try{session.originals[removed[i].index].id=restore(removed[i].data).uuid;}catch(restoreError){restoreFailures++;}
             if(restoreFailures)throw new Error('预览恢复未完成，请检查图层并重试取消');
             cancelLive();throw error;
         }
-        for(i=0;i<parents.length;i++)try{p=parents[i];if(p.typename==='GroupItem'&&p.note&&p.note.indexOf('gridloom:group|')===0&&!p.pageItems.length)p.remove();}catch(ignoreEmpty){}
-        session.layer.layer.name='gridloom';live=null;pending=null;app.redraw();return {count:count,removed:removed.length,guideState:guideState(session.state.doc)};
+        for(i=0;i<parents.length;i++)try{p=lookup(doc,parents[i]);if(p&&p.note&&p.note.indexOf('gridloom:group|')===0&&!p.pageItems.length)p.remove();}catch(ignoreEmpty){}
+        guideLayer(doc).name='gridloom';live=null;pending=null;app.redraw();return {count:count,removed:removed.length,guideState:guideState(doc)};
     }
     function execute(payload, clearing) {
         var state=verified(payload.token), doc=state.doc, newPaths=[], newGroups=[], oldGroups=[], removed=[], toRemove=[], layerInfo=null, oldLayer=doc.activeLayer;
@@ -215,7 +253,7 @@ var GridloomHost = (function () {
             } else if(payload.mode==='replace' && owned(p)) {
                 for(k in keys) if(keys.hasOwnProperty(k)&&p.note.indexOf(k)===0){matches=true;break;}
             }
-            if(matches){check(!p.locked && p.editable, '范围内有锁定参考线，请先解锁');toRemove.push(p);var parent=p.parent;if(parent&&parent.typename==='GroupItem'&&parent.note&&parent.note.indexOf('gridloom:group|')===0){var seen=false;for(j=0;j<oldGroups.length;j++)if(oldGroups[j]===parent)seen=true;if(!seen)oldGroups.push(parent);}}
+            if(matches){checkGuideAccess(p);toRemove.push(p);var parent=p.parent;if(parent&&parent.typename==='GroupItem'&&parent.note&&parent.note.indexOf('gridloom:group|')===0){var seen=false;for(j=0;j<oldGroups.length;j++)if(oldGroups[j]===parent)seen=true;if(!seen)oldGroups.push(parent);}}
         }
         check(toRemove.length<=5000, '一次操作最多清除 5000 条参考线');
         try {
@@ -224,7 +262,7 @@ var GridloomHost = (function () {
                 if(!plans[i].lines.length)continue;
                 var group=layerInfo.layer.groupItems.add();newGroups.push(group);
                 group.name=areas[i].name;
-                group.note='gridloom:group|'+plans[i].key+'|'+batch;
+                group.note='gridloom:group|'+plans[i].key+'|'+batch+(payload.settings?'\ngridloom:settings|'+payload.settings:'');
                 for(j=0;j<plans[i].lines.length;j++){
                     var line=plans[i].lines[j];p=group.pathItems.add();newPaths.push(p);
                     p.setEntirePath([[line[0],line[1]],[line[2],line[3]]]);p.filled=false;p.stroked=false;p.guides=true;
@@ -250,7 +288,8 @@ var GridloomHost = (function () {
     return {liveEditing:true,dispatch:function(method,payload){
         try {
             var result;
-            if(method==='liveBegin')result=beginLive(payload);
+            if(method==='session')result={id:GridloomSessionId};
+            else if(method==='liveBegin')result=beginLive(payload);
             else if(method==='liveUpdate')result=updateLive(payload);
             else if(method==='liveCommit')result=commitLive(payload);
             else if(method==='liveCancel')result=cancelLive();

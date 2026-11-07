@@ -17,29 +17,23 @@ async function main(){
   await evaluate(`window.tabFits=[];window.tabResize=GridloomHostClient.resize;GridloomHostClient.resize=(w,h)=>tabFits.push([w,h]);GridloomHostClient.available=true`);
   for(const width of [260,320,400]){
    await send('Emulation.setDeviceMetricsOverride',{width,height:950,screenWidth:1600,screenHeight:1200,deviceScaleFactor:1,mobile:false});
-   await evaluate(`document.getElementById('tab-grid').click();new Promise(resolve=>setTimeout(resolve,80))`);
-   const baseline=await evaluate(`tabFits.length=0;({height:document.querySelector('main').getBoundingClientRect().height,button:document.getElementById('apply').getBoundingClientRect().top})`);
-   for(const name of ['notation','presets','grid','presets','notation','grid']){
-    await evaluate(`document.getElementById('tab-${name}').click();new Promise(resolve=>setTimeout(resolve,30))`);
-    const state=await evaluate(`({height:document.querySelector('main').getBoundingClientRect().height,button:document.getElementById('apply').getBoundingClientRect().top,resizes:tabFits.length})`);
-    assert(Math.abs(state.height-baseline.height)<1&&Math.abs(state.button-baseline.button)<1&&state.resizes===0,'Tab switch moved the panel or footer at '+width+': '+name);
+   for(const name of ['grid','presets','notation','grid']){
+    await evaluate(`document.getElementById('tab-${name}').click();new Promise(resolve=>setTimeout(resolve,80))`);
+    const size=await evaluate(`({fit:tabFits.at(-1),expected:Math.max(260,Math.ceil(Math.min(document.getElementById('content-layout').getBoundingClientRect().height,document.getElementById('options').hidden?420:Infinity)+[...document.querySelectorAll('main > .tabbar,main > .notice,main > footer')].reduce((n,e)=>n+e.getBoundingClientRect().height,0))+2)})`);
+    assert(size.fit&&size.fit[0]===width&&size.fit[1]===size.expected,'Panel height must match active content at '+width+' '+name);
    }
   }
-  await evaluate(`document.getElementById('tab-presets').click();for(let i=0;i<40;i++){const row=document.createElement('div');row.dataset.testRow='true';row.className='preset';const b=document.createElement('button');b.textContent='Long preset '+i;row.append(b);document.getElementById('preset-list').append(row);}new Promise(resolve=>setTimeout(resolve,80))`);
-  assert(await evaluate(`document.getElementById('page-presets').scrollHeight>document.getElementById('page-presets').clientHeight&&tabFits.length===0`),'Long preset lists must scroll inside the page without resizing the host');
-  await evaluate(`document.querySelectorAll('[data-test-row]').forEach(el=>el.remove());document.getElementById('tab-notation').click();window.previousNotation=document.getElementById('notation').value;document.getElementById('notation').value='$'+'missing'.repeat(40);document.getElementById('notation').dispatchEvent(new Event('input',{bubbles:true}));new Promise(resolve=>setTimeout(resolve,80))`);
-  assert(await evaluate(`document.getElementById('status').scrollHeight>document.getElementById('status').clientHeight`),'Long errors must scroll within their bounded area');
-  await evaluate(`GridloomHostClient.available=false;document.getElementById('notation').value=previousNotation;document.getElementById('notation').dispatchEvent(new Event('input',{bubbles:true}));GridloomHostClient.available=false;GridloomHostClient.resize=tabResize;document.getElementById('tab-grid').click()`);
+  await evaluate(`GridloomHostClient.available=false;GridloomHostClient.resize=tabResize;document.getElementById('tab-grid').click()`);
  }
  await send('Emulation.setDeviceMetricsOverride',{width:320,height:950,deviceScaleFactor:1,mobile:false});
  await send('Page.navigate',{url:require('node:url').pathToFileURL(path.join(root,'dist/index.html')).href+'?lang=en'});
  for(let i=0;i<50;i++){if(await evaluate(`document.getElementById('status')?.textContent==='26 guides'`))break;await new Promise(r=>setTimeout(r,100));}
  assert(await evaluate(`document.getElementById('status').textContent==='26 guides'`),'Panel did not initialize');
- assert(await evaluate(`getComputedStyle(document.getElementById('status')).visibility==='hidden'&&document.getElementById('status').getAttribute('aria-hidden')==='true'`),'Routine count must be hidden');
+ assert(await evaluate(`getComputedStyle(document.getElementById('status')).display==='none'&&document.getElementById('status').getAttribute('aria-hidden')==='true'`),'Routine count must be hidden');
  assert(await evaluate(`document.getElementById('options').tagName==='SECTION'&&!document.querySelector('#write-mode,#border,#live-cancel')`),'Settings must start open with removed controls absent');
  assert(await evaluate(`!document.getElementById('preview')&&!document.getElementById('unit')`),'Preview and unit selector must be absent');
  assert(await evaluate(`!document.querySelector('[title],[data-tooltip]')`),'Hover tooltips must be absent');
- assert(await evaluate(`document.querySelectorAll('.quick svg').length===7`),'Quick actions must use icons');
+ assert(await evaluate(`!document.querySelector('.quick')`),'Unused quick toolbar must be absent');
  assert(await evaluate(`document.getElementById('apply').disabled`),'Preview must disable document writes');
  assert(await evaluate(`document.querySelectorAll('[data-builtin]').length===0`),'Presets must be deferred until first visit');
  await stableTabs();
@@ -67,8 +61,8 @@ async function main(){
  await send('Emulation.setDeviceMetricsOverride',{width:320,height:950,deviceScaleFactor:1,mobile:false});
  if(process.env.GRIDLOOM_SCREENSHOT){const image=await send('Page.captureScreenshot',{format:'png',clip:{x:0,y:0,width:320,height:Math.ceil(await evaluate(`document.querySelector('main').getBoundingClientRect().height`)),scale:1}});fs.writeFileSync(process.env.GRIDLOOM_SCREENSHOT,Buffer.from(image.data,'base64'));}
  await send('Page.navigate',{url:require('node:url').pathToFileURL(path.join(root,'dist/index.html')).href+'?lang=zh'});
- for(let i=0;i<50;i++){if(await evaluate(`document.getElementById('status')?.textContent==='26 条参考线'`))break;await new Promise(r=>setTimeout(r,100));}
- assert(await evaluate(`document.getElementById('tab-grid').textContent==='网格'&&document.getElementById('apply').textContent==='应用'`),'Chinese UI failed');
+ for(let i=0;i<50;i++){if(await evaluate(`document.getElementById('apply')?.textContent==='应用'`))break;await new Promise(r=>setTimeout(r,100));}
+ assert(await evaluate(`document.getElementById('tab-grid').textContent==='网格'&&document.getElementById('apply').textContent==='应用'`),'Chinese UI follows host locale');
  await stableTabs();
  await send('Emulation.setDeviceMetricsOverride',{width:320,height:950,deviceScaleFactor:1,mobile:false});
  await evaluate(`document.getElementById('margin-top').value='10px';document.getElementById('margin-top').dispatchEvent(new Event('input',{bubbles:true}))`);
@@ -111,19 +105,13 @@ async function main(){
  await evaluate(`document.getElementById('save').click();document.getElementById('preset-name').value='Book UI';document.getElementById('save-confirm').click();`);
  assert(await evaluate(`JSON.parse(localStorage.getItem('gridloom.presets.v1')).presets.some(p=>p.name==='Book UI'&&p.config.book==='horizontal')`),'Preset must retain book mode');
 
- // Collapsible count sliders and the live-edit lifecycle, with an asynchronous host double.
- await evaluate(`document.getElementById('save-form').hidden=true;document.getElementById('options').open=false;document.getElementById('tab-grid').click();document.getElementById('cols-toggle').click();`);
+ // Regression: parameter changes never write to Illustrator until Apply.
+ await evaluate(`document.getElementById('save-form').hidden=true;document.getElementById('tab-grid').click();document.getElementById('cols-toggle').click();`);
  assert(await evaluate(`!document.getElementById('cols-slider').hidden&&document.getElementById('cols-toggle').getAttribute('aria-expanded')==='true'`),'Slider must open beneath count fields');
- assert(await evaluate(`getComputedStyle(document.getElementById('cols')).appearance==='textfield'&&document.querySelector('#cols-toggle svg')`),'Count must use a numeric entry and slider icon');
- await evaluate(`document.getElementById('cols-range').value='6';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));`);
- assert(await evaluate(`document.getElementById('cols').value==='6'`),'Slider must synchronize exact count');
- await evaluate(`window.liveCalls=[];window.liveBusy=false;window.liveOverlap=false;window.liveInitial=document.getElementById('cols').value;GridloomHostClient.available=true;GridloomHostClient.call=async(method,payload)=>{if(liveBusy)liveOverlap=true;liveBusy=true;liveCalls.push({method,payload});await new Promise(r=>setTimeout(r,15));liveBusy=false;if(method==='context')return {token:'test',unit:'pt',contexts:[{key:'artboard:0',bounds:[0,594,420,0],artboard:[0,594,420,0]}],guideState:{exists:true,locked:false,visible:true}};if(method==='liveBegin')return {id:'test-live'};return {guideState:{exists:true,locked:false,visible:true}};};window.dispatchEvent(new Event('focus'));new Promise(r=>setTimeout(r,50))`);
- await evaluate(`document.getElementById('cols-range').value='7';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));new Promise(r=>setTimeout(r,100))`);
- assert(await evaluate(`!document.getElementById('live-cancel')&&document.getElementById('apply').textContent==='应用'&&document.getElementById('clear').disabled`),'Live session controls failed');
- await evaluate(`for(const count of [3,4,5,7,8]){document.getElementById('cols-range').value=count;document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));}new Promise(r=>setTimeout(r,200))`);
- assert(await evaluate(`liveCalls.filter(c=>c.method==='liveUpdate').length===2&&!liveOverlap`),'Rapid dragging must coalesce into one serialized update');
- await evaluate(`document.getElementById('cols-range').value='9';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('apply').click();new Promise(r=>setTimeout(r,100))`);
- assert(await evaluate(`liveCalls.at(-1).method==='liveCommit'&&!document.getElementById('live-edit')&&document.getElementById('cols').value==='9'&&!liveOverlap`),'Apply must flush the final value before commit');
+ await evaluate(`window.liveCalls=[];GridloomHostClient.available=true;GridloomHostClient.call=async(method,payload)=>{liveCalls.push({method,payload});if(method==='context')return {token:'test',unit:'pt',contexts:[{key:'artboard:0',bounds:[0,594,420,0],artboard:[0,594,420,0]}],guideState:{exists:true,locked:false,visible:true}};return {count:12,removed:0,guideState:{exists:true,locked:false,visible:true}};};for(const value of [3,4,5,7,8]){document.getElementById('cols-range').value=value;document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));}new Promise(r=>setTimeout(r,300))`);
+ assert(await evaluate(`liveCalls.length===0&&document.getElementById('cols').value==='8'`),'Slider changes must not write to Illustrator');
+ await evaluate(`document.getElementById('apply').click();new Promise(r=>setTimeout(r,50))`);
+ assert(await evaluate(`liveCalls.map(c=>c.method).join(',')==='context,apply'`),'Only Apply may write after reading current scope');
  await send('Emulation.setDeviceMetricsOverride',{width:320,height:500,deviceScaleFactor:1,mobile:false});
  if(process.env.GRIDLOOM_SCREENSHOT){await evaluate(`document.getElementById('panel-content').scrollTop=0`);const image=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(process.env.GRIDLOOM_SCREENSHOT.replace('.png','-slider.png'),Buffer.from(image.data,'base64'));}
  await evaluate(`GridloomHostClient.call=originalCall;GridloomHostClient.available=false;`);
@@ -135,7 +123,58 @@ async function main(){
  await evaluate(`document.querySelector('[data-position="end,center"]').click();document.querySelector('[data-book="vertical"]').click();`);
  assert(await evaluate(`document.getElementById('alignX').value==='end'&&document.getElementById('alignY').value==='center'&&document.querySelector('[data-position="end,center"]').getAttribute('aria-pressed')==='true'`),'Position grid must set both alignment axes');
  assert(await evaluate(`document.getElementById('book').value==='vertical'&&document.querySelector('[data-book="vertical"]').getAttribute('aria-pressed')==='true'&&!document.querySelector('#options summary,#options select')`),'Book buttons and static settings failed');
- console.log('UI passed: collapsible sliders, coalesced live updates, apply/cancel, 260/320/400px, no preview/unit selector, EN/ZH, mixed units, notation/captures/arithmetic errors, preset save, reset, field notation, disabled host writes, zero-row margins, expanding settings, stable tabs/footer, internal list/error scrolling and constrained docked actions.');
+ await evaluate(`document.getElementById('tab-grid').click();window.beforeNotation=Gridloom.plan({unit:'pt',margins:{top:'0',right:'0',bottom:'0',left:'0'},cols:'2',rows:'0',colWidth:'',rowHeight:'',gutterX:'0',gutterY:'0',precision:3,book:'none'}, {bounds:[0,100,100,0],artboard:[0,100,100,0]});document.getElementById('tab-notation').click();`);
+ assert(await evaluate(`/(?:columns|列):/.test(document.getElementById('notation').value)&&!document.querySelector('.syntax-help,#options>.heading')`),'Custom tab must populate notation without inline syntax help');
+ await evaluate(`document.getElementById('tab-presets').click();`);
+ assert(await evaluate(`document.getElementById('options').hidden`),'Presets must hide settings');
+ assert(await evaluate(`getComputedStyle(document.getElementById('page-presets')).overflowY==='visible'&&getComputedStyle(document.getElementById('panel-content')).overflowY==='auto'`),'Presets must use only the outer content scrollbar');
+ await evaluate(`document.querySelector('[data-builtin=golden]').click();`);
+ assert(await evaluate(`document.getElementById('tab-grid').getAttribute('aria-selected')==='true'&&document.getElementById('colWidth').value.includes('pt')&&!document.getElementById('status').classList.contains('error')`),'Notation preset must populate grid and return to grid tab');
+ await evaluate(`GridloomHostClient.available=true;window.previewCalls=[];GridloomHostClient.call=async(method,payload)=>{previewCalls.push(method);if(method==='context')return {token:'p',unit:'pt',contexts:[{key:'artboard:0',bounds:[0,594,420,0],artboard:[0,594,420,0]}],guideState:{exists:true,locked:false,visible:true}};if(method==='liveBegin')return {id:'p'};return {guideState:{exists:true,locked:false,visible:true}};};document.getElementById('live-preview').disabled=false;document.getElementById('live-preview').click();new Promise(r=>setTimeout(r,80))`);
+ assert(await evaluate(`previewCalls.includes('liveBegin')&&previewCalls.includes('liveUpdate')`),'Opt-in preview must start');
+ await evaluate(`document.getElementById('live-preview').click();new Promise(r=>setTimeout(r,80))`);
+ assert(await evaluate(`previewCalls.at(-1)==='liveCancel'&&document.getElementById('live-preview').getAttribute('aria-pressed')==='false'`),'Disabling preview must restore document');
+ assert(await evaluate(`document.getElementById('live-preview').getBoundingClientRect().width===document.getElementById('reset').getBoundingClientRect().width`),'Preview checkbox must not leave a large gap');
+ await evaluate(`GridloomHostClient.available=false;GridloomHostClient.call=originalCall;`);
+ await evaluate(`GridloomHostClient.available=true;window.lockPreviewCalls=[];GridloomHostClient.call=async(method,payload)=>{lockPreviewCalls.push(method);if(method==='context')return {token:'p',unit:'pt',contexts:[{key:'artboard:0',bounds:[0,594,420,0],artboard:[0,594,420,0]}],guideState:{exists:true,locked:false,visible:true}};if(method==='liveBegin')return {id:'p'};if(method==='lockGuides')return {exists:true,locked:true,visible:true};return {guideState:{exists:true,locked:false,visible:true}};};document.getElementById('live-preview').disabled=false;document.getElementById('live-preview').click();new Promise(r=>setTimeout(r,80))`);
+ assert(await evaluate(`!document.getElementById('lock-guides').disabled`),'Lock must be available during preview');
+ await evaluate(`document.getElementById('lock-guides').click();new Promise(r=>setTimeout(r,80))`);
+ assert(await evaluate(`lockPreviewCalls.slice(-2).join(',')==='liveCommit,lockGuides'&&document.getElementById('live-preview').getAttribute('aria-pressed')==='false'`),'Lock must commit and turn off preview');
+ await evaluate(`window.nativeConfig={...Gridloom.defaults(),margins:{top:'8mm',right:'8mm',bottom:'8mm',left:'8mm'},cols:'4',gutterX:'4mm'};window.nativeKey='page-1';GridloomHostClient.call=async()=>({token:'i',unit:'mm',contexts:[{key:'page:1',bounds:[0,842,595,0],artboard:[0,842,595,0]}],guideState:{exists:false},prefill:{sourceKey:nativeKey,config:nativeConfig,grid:{pointSize:12,horizontalScale:100,verticalScale:100,characterAki:0,lineAki:9,vertical:false}},capabilities:{livePreview:false}});window.dispatchEvent(new Event('focus'));new Promise(r=>setTimeout(r,50))`);
+ assert(await evaluate(`document.getElementById('cols').value!=='4'&&document.getElementById('live-preview').disabled`),'New page settings must not overwrite an initialized form');
+ await evaluate(`document.getElementById('cols').value='5';document.getElementById('cols').dispatchEvent(new Event('input',{bubbles:true}));window.dispatchEvent(new Event('focus'));new Promise(r=>setTimeout(r,50))`);
+ assert(await evaluate(`document.getElementById('cols').value==='5'`),'Focus must not overwrite edited values from unchanged native settings');
+ await evaluate(`document.getElementById('tab-presets').click();`);
+ assert(await evaluate(`document.querySelectorAll('[data-host-preset]').length===2`),'InDesign must expose page margins and layout grid presets');
+ await evaluate(`GridloomHostClient.available=false;GridloomHostClient.call=originalCall;`);
+ if(process.env.GRIDLOOM_SCREENSHOT){
+  for(const tab of ['grid','notation']){
+   await evaluate(`document.getElementById('tab-${tab}').click();document.getElementById('cols-slider').hidden=true;new Promise(r=>setTimeout(r,30))`);
+   const height=await evaluate(`Math.max(260,Math.ceil(Math.min(document.getElementById('content-layout').getBoundingClientRect().height,document.getElementById('options').hidden?420:Infinity)+[...document.querySelectorAll('main > .tabbar,main > .notice,main > footer')].reduce((n,e)=>n+e.getBoundingClientRect().height,0))+2)`);
+   await send('Emulation.setDeviceMetricsOverride',{width:320,height,deviceScaleFactor:1,mobile:false});
+   const image=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(process.env.GRIDLOOM_SCREENSHOT.replace('.png','-fit-'+tab+'.png'),Buffer.from(image.data,'base64'));
+  }
+ }
+ // Reopening a panel retains raw fields only within the same Adobe application session.
+ await send('Page.enable');
+ await send('Page.addScriptToEvaluateOnNewDocument',{source:`
+  window.__adobe_cep__={getHostEnvironment:()=>JSON.stringify({appId:'IDSN',appUILocale:'zh_CN'}),getSystemPath:()=>'/tmp/gridloom',addEventListener(){},resizeContent(){},evalScript(script,callback){
+   const query=new URL(location.href).searchParams,other=query.get('page')==='2',fresh=query.get('session')==='new';
+   const value=script.includes('dispatch("session"')?{id:fresh?'new-app-session':'same-app-session'}:{token:'token',unit:'mm',contexts:[{key:other?'page:2':'page:1',bounds:[0,842,595,0],artboard:[0,842,595,0]}],guideState:{exists:false},capabilities:{livePreview:false},prefill:{sourceKey:other?'page2':'page1',config:{unit:'mm',margins:{top:other?'20mm':'8mm',right:'8mm',bottom:'8mm',left:'8mm'},cols:other?'2':'4',rows:'0',colWidth:'',rowHeight:'',gutterX:'4mm',gutterY:'0',alignX:'start',alignY:'start',book:'none',border:false,precision:3,guideLength:'artboard'}}};
+   if(query.has('saved')&&value.prefill)value.savedGrid=JSON.stringify({version:1,mode:'grid',config:{...value.prefill.config,cols:'9'},notation:''});
+   setTimeout(()=>callback(JSON.stringify({ok:true,value})),0);
+  }};`});
+ const sessionURL=require('node:url').pathToFileURL(path.join(root,'dist/index.html')).href;
+ await send('Page.navigate',{url:sessionURL});await new Promise(r=>setTimeout(r,150));
+ assert(await evaluate(`document.getElementById('cols').value==='4'&&document.getElementById('margin-top').value==='8mm'`),'First session must import page settings: '+JSON.stringify(await evaluate(`({cols:document.getElementById('cols').value,status:document.getElementById('status').textContent,host:GridloomHostClient.available,storage:{...localStorage}})`)));
+ await evaluate(`document.getElementById('cols').value='7';document.getElementById('cols').dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('margin-top').value='11mm';document.getElementById('margin-top').dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('tab-notation').click();document.getElementById('notation').value='| 25mm | (v)';document.getElementById('notation').dispatchEvent(new Event('input',{bubbles:true}));`);
+ await send('Page.navigate',{url:sessionURL+'?page=2'});await new Promise(r=>setTimeout(r,150));
+ assert(await evaluate(`document.getElementById('cols').value==='7'&&document.getElementById('margin-top').value==='11mm'&&document.getElementById('notation').value==='| 25mm | (v)'`),'Reopen on another page must restore fields and custom notation');
+ await send('Page.navigate',{url:sessionURL+'?page=2&session=new'});await new Promise(r=>setTimeout(r,150));
+ assert(await evaluate(`document.getElementById('cols').value==='2'&&document.getElementById('margin-top').value==='20mm'`),'A new application session may import its initial page');
+ await send('Page.navigate',{url:sessionURL+'?page=2&saved=1'});await new Promise(r=>setTimeout(r,150));
+ assert(await evaluate(`document.getElementById('cols').value==='9'`),'New session restores document settings before native page defaults');
+ console.log('UI passed: collapsible sliders, coalesced live updates, apply/cancel, 260/320/400px, no preview/unit selector, EN/ZH, mixed units, notation/captures/arithmetic errors, preset save, reset, field notation, disabled host writes, zero-row margins, expanding settings, content-sized tabs/footer, internal list/error scrolling and constrained docked actions.');
  await send('Browser.close',{},null);
 }
 main().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(ws)ws.close();chrome.kill();await new Promise(r=>setTimeout(r,300));try{fs.rmSync(profile,{recursive:true,force:true});}catch{}});

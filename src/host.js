@@ -6,8 +6,9 @@
   let environment={};try{if(cep)environment=JSON.parse(cep.getHostEnvironment());}catch(ignore){}
   const escape=value=>JSON.stringify(value).replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
   let busy=false;
+  let extensionPath='';try{if(cep)extensionPath=decodeURI(cep.getSystemPath('extension')).replace(/^file:\/\//,'');}catch(ignore){}
   window.GridloomHostClient={
-    available:Boolean(cep),locale:environment.appUILocale||environment.appLocale||navigator.language,
+    available:Boolean(cep),appId:environment.appId||'ILST',locale:environment.appUILocale||environment.appLocale||navigator.language,
     resize(width,height) {
       if(cep&&typeof cep.resizeContent==='function')cep.resizeContent(width,height);
     },
@@ -16,8 +17,10 @@
       if(busy)throw new Error('上一操作仍在执行');busy=true;
       // No retry/timeout: a late mutation must never be submitted twice.
       try{return await new Promise((resolve,reject)=>{
-        cep.evalScript(`GridloomHost.dispatch(${escape(method)},${escape(payload)})`,raw=>{
-          try{const data=JSON.parse(raw);if(!data.ok)throw new Error(data.error);resolve(data.value);}
+        const hostFile=extensionPath+'/host/'+(environment.appId==='IDSN'?'indesign.jsx':'illustrator.jsx');
+        const script=`var gridloomReply;try{if(typeof GridloomHost==='undefined'){$.evalFile(File(${escape(hostFile)}));$.global.GridloomHost=GridloomHost;}gridloomReply=GridloomHost.dispatch(${escape(method)},${escape(payload)});}catch(gridloomError){gridloomReply='GRIDLOOM_HOST_ERROR:'+String(gridloomError);}gridloomReply;`;
+        cep.evalScript(script,raw=>{
+          try{if(typeof raw!=='string'||raw.trim()[0]!=='{')throw new Error(raw&&raw.indexOf('GRIDLOOM_HOST_ERROR:')===0?raw.slice(20):'宿主脚本未能加载，请关闭并重新打开面板');const data=JSON.parse(raw);if(!data.ok)throw new Error(data.error);resolve(data.value);}
           catch(error){reject(new Error(raw==='EvalScript error.'?'Illustrator 脚本执行失败':error.message));}
         });
       });}finally{busy=false;}

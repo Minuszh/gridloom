@@ -20,7 +20,7 @@ window.GridloomIcons={mount(t){
  const svg=name=>'<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false">'+shapes[name]+'</svg>';
  this.set=(button,name)=>{if(button.dataset.icon===name)return;button.dataset.icon=name;button.innerHTML=svg(name);};
  document.querySelectorAll('[data-quick]').forEach(button=>{button.removeAttribute('data-i18n');this.set(button,button.dataset.quick);button.classList.add('icon-button');});
- for(const [id,name,label] of [['clear','clear','Clear'],['visibility','eye','Show / hide'],['lock-guides','lock','Lock / unlock guides'],['reset','refresh','Reset form']]){
+ for(const [id,name,label] of [['live-preview','eye','Live preview'],['visibility','eye','Show / hide'],['lock-guides','lock','Lock / unlock guides'],['reset','refresh','Reset form']]){
   const button=document.getElementById(id);button.removeAttribute('data-i18n');this.set(button,name);button.setAttribute('aria-label',t(label));button.classList.add('icon-button');
  }
  for(const key of ['cols','rows'])this.set(document.getElementById(key+'-toggle'),'slider');

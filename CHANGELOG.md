@@ -1,7 +1,20 @@
 # Changelog / 更新记录
 
-0.3.12 为首次公开预发布，早期版本为本地开发记录。
-0.3.12 is the first public pre-release; earlier entries document local development.
+0.5.0 是当前唯一公开 Release。旧测试包已撤下，以下保留开发历史。
+0.5.0 is the sole public Release. Earlier test packages were withdrawn; development history is retained below.
+
+## 0.5.0 — 2026-11-07
+
+- 紧凑面板、单层预设滚动、中英文自动匹配，英文简写语法标注维护中。
+  Compact panel, one preset scroll area, automatic Chinese/English UI, and English shorthand notation marked under maintenance.
+- 网格参数随文档保存；会话内切换画板保留输入。
+  Store applied grid settings in the document and preserve inputs when switching artboards within a session.
+- InDesign 测试支持，读取页边距、分栏及版面字格。
+  Experimental InDesign support with page margin, column, and layout grid import.
+- 实时预览默认关闭，合并连续修改；锁定时关闭预览。原生崩溃修复仍待验证。
+  Live preview starts off, coalesces edits, and stops when locking. Native crash resolution remains unverified.
+- 清理废弃表单恢复分支、旧工具栏样式、重复包装与过时注释。
+  Remove unused form restoration branches, toolbar styles, redundant wrappers, and outdated comments.
 
 ## 0.3.17 — 2026-11-07
 

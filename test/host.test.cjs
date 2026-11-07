@@ -4,21 +4,22 @@ const host=fs.readFileSync(require('node:path').join(__dirname,'../host/illustra
 function environment(){
  const env=vm.createContext({});
  vm.runInContext(`
- var failAddAt=0,adds=0,redraws=0,failGuides=false;
+ var failAddAt=0,adds=0,redraws=0,failGuides=false,uuidSerial=0;
  var doc={name:'Test.ai',selection:[],pathItems:[],layers:[]};
  function layer(){var l={name:'Artwork',locked:false,visible:true,pageItems:[]};
- l.pathItems={add:function(){adds++;if(failAddAt===adds)throw Error('injected create failure');var p={parent:l,layer:l,guides:false,note:'',name:'',locked:false,hidden:false,editable:true,closed:false,pathPoints:[]};
+ l.pathItems={add:function(){adds++;if(failAddAt===adds)throw Error('injected create failure');var p={uuid:String(++uuidSerial),parent:l,layer:l,guides:false,note:'',name:'',locked:false,hidden:false,editable:true,closed:false,pathPoints:[]};
  if(failGuides)Object.defineProperty(p,'guides',{get:function(){return false;},set:function(){}});
  p.pathPoints.add=function(){var point={};this.push(point);return point;};
  p.setEntirePath=function(points){this.pathPoints.length=0;for(var i=0;i<points.length;i++)this.pathPoints.push({anchor:points[i],leftDirection:points[i],rightDirection:points[i],pointType:0});var a=points[0],b=points[1];this.geometricBounds=[Math.min(a[0],b[0]),Math.max(a[1],b[1]),Math.max(a[0],b[0]),Math.min(a[1],b[1])];};
  p.remove=function(){doc.pathItems.splice(doc.pathItems.indexOf(this),1);l.pageItems.splice(l.pageItems.indexOf(this),1);};doc.pathItems.push(p);l.pageItems.push(p);return p;}};
  l.groupItems=[];l.groupItems.add=function(){
- var g={typename:'GroupItem',name:'',note:'',parent:l,pageItems:[],pathItems:{}};
+ var g={uuid:String(++uuidSerial),typename:'GroupItem',name:'',note:'',parent:l,pageItems:[],pathItems:{}};
  g.pathItems.add=function(){var p=l.pathItems.add();l.pageItems.splice(l.pageItems.indexOf(p),1);g.pageItems.push(p);p.parent=g;var remove=p.remove;p.remove=function(){var at=g.pageItems.indexOf(this);if(at>=0)g.pageItems.splice(at,1);var atDoc=doc.pathItems.indexOf(this);if(atDoc>=0)doc.pathItems.splice(atDoc,1);};return p;};
  g.remove=function(){if(this.pageItems.length)throw Error('group not empty');l.groupItems.splice(l.groupItems.indexOf(this),1);l.pageItems.splice(l.pageItems.indexOf(this),1);};
  l.groupItems.push(g);l.pageItems.push(g);return g;
  };
  l.remove=function(){doc.layers.splice(doc.layers.indexOf(this),1)};doc.layers.push(l);return l;}
+ doc.getPageItemFromUuid=function(id){for(var i=0;i<this.pathItems.length;i++)if(this.pathItems[i].uuid===id)return this.pathItems[i];for(var j=0;j<this.layers.length;j++)for(var k=0;k<this.layers[j].groupItems.length;k++)if(this.layers[j].groupItems[k].uuid===id)return this.layers[j].groupItems[k];throw Error('Missing UUID');};
  doc.layers.add=layer;doc.activeLayer=layer();doc.artboards=[{name:'A',artboardRect:[100,900,520,306]}];doc.artboards.getActiveArtboardIndex=function(){return 0;};
  var app={documents:[doc],activeDocument:doc,redraw:function(){redraws++;},executeMenuCommand:function(){}};
  `+host,env);
@@ -143,4 +144,38 @@ test('live replacement commits and removes only matching owned guides',()=>{
 test('live commit failure restores removed originals',()=>{
  const e=environment();e.run("var first=doc.activeLayer.pathItems.add();first.guides=true;first.note='gridloom:1|artboard:0|old';first.setEntirePath([[120,900],[120,306]]);var second=doc.activeLayer.pathItems.add();second.guides=true;second.note=first.note;second.setEntirePath([[140,900],[140,306]]);second.remove=function(){throw Error('delete failed');};");
  const id=startLive(e);preview(e,id,[160]);assert.equal(e.call('liveCommit',{id}).ok,false);assert.equal(e.run('doc.pathItems.length'),2);assert.equal(e.run('doc.pathItems.every(function(p){return !p.hidden;})'),true);
+});
+
+test('live cancellation skips deleted paths and does not reuse their wrappers',()=>{
+ const e=environment(),id=startLive(e);preview(e,id,[120,140]);e.run("var stale=doc.pathItems[0];stale.remove();stale.remove=function(){throw Error('stale wrapper touched');}");
+ assert.equal(preview(e,id,[150]).ok,false);assert.equal(e.call('liveCancel',{}).ok,true);assert.equal(e.run('doc.pathItems.length'),0);
+});
+test('live cancellation after document close does not access objects',()=>{
+ const e=environment(),id=startLive(e);preview(e,id,[120]);e.run("doc.pathItems[0].remove=function(){throw Error('closed object touched');};app.documents=[];");assert.equal(e.call('liveCancel',{}).ok,true);
+});
+test('live update edits anchors rather than rebuilding a native guide',()=>{
+ const e=environment(),id=startLive(e);preview(e,id,[120]);e.run("doc.pathItems[0].setEntirePath=function(){throw Error('existing guide rebuilt');}");assert.equal(preview(e,id,[140]).ok,true);assert.equal(e.run('doc.pathItems[0].pathPoints[0].anchor[0]'),140);assert.equal(e.run('doc.pathItems[0].pathPoints[0].leftDirection[0]'),140);
+});
+
+test('hidden legacy guides are not mistaken for locked guides',()=>{
+ const e=environment();e.run("var hidden=doc.activeLayer.pathItems.add();hidden.guides=true;hidden.note='gridloom:1|artboard:0|old';hidden.hidden=true;hidden.editable=false;hidden.setEntirePath([[120,900],[120,306]]);");
+ const id=startLive(e);assert.equal(preview(e,id,[140]).ok,true);assert.equal(e.call('liveCommit',{id}).ok,true);assert.equal(e.run('doc.pathItems.length'),1);
+});
+
+test('auto scope follows active artboard but ignores selected guides',()=>{
+ const e=environment();e.run("doc.artboards.push({name:'B',artboardRect:[600,900,1000,306]});doc.artboards.getActiveArtboardIndex=function(){return 1;};doc.selection=[{typename:'PathItem',guides:true,geometricBounds:[120,900,120,306]}];");
+ const c=e.call('context',{scope:'auto'}).value;assert.equal(c.contexts[0].key,'artboard:1');assert.deepEqual(c.contexts[0].bounds,[600,900,1000,306]);
+ e.run("doc.selection.push({typename:'PathItem',guides:false,geometricBounds:[640,800,850,500]});");assert.deepEqual(e.call('context',{scope:'auto'}).value.contexts[0].bounds,[640,800,850,500]);
+});
+test('host session survives adapter reload without touching the document',()=>{
+ const e=environment(),id=e.call('session',{}).value.id;e.run(host);assert.equal(e.call('session',{}).value.id,id);assert.equal(e.run('doc.pathItems.length'),0);
+});
+
+test('grid settings survive host reload and remain scoped to their artboard',()=>{
+ const e=environment(),c=e.call('context',{}).value,settings=JSON.stringify({version:1,mode:'grid',config:{cols:'7'}});
+ assert.equal(e.call('apply',{token:c.token,plans:[{key:'artboard:0',lines:[[124,900,124,306]]}],settings}).ok,true);
+ e.run(host);
+ assert.equal(e.call('context',{}).value.savedGrid,settings);
+ e.run("doc.artboards.push({name:'B',artboardRect:[600,900,1020,306]});doc.artboards.getActiveArtboardIndex=function(){return 1;}");
+ assert.equal(e.call('context',{}).value.savedGrid,null);
 });

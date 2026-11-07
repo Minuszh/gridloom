@@ -65,3 +65,32 @@ test('book mode calculates a page once and enforces combined line limits',()=>{
  G.book(c,context,()=>{calls++;return {lines:[[100,900,100,306]]};});assert.equal(calls,1);
  assert.throws(()=>G.book(c,context,()=>({lines:Array.from({length:2501},(_,i)=>[i,900,i,306])})));
 });
+
+test('grid notation conversion retains guides in normal and book layouts',()=>{
+ const sorted=lines=>lines.map(l=>l.join(',')).sort();
+ for(const book of ['none','horizontal','vertical']){
+  const c={...cfg(),book,cols:'3',rows:'2',alignX:'center',alignY:'end'};
+  assert.deepEqual(sorted(N.compile(N.fromGrid(c,context),context,c).lines),sorted(G.plan(c,context).lines));
+ }
+});
+test('notation presets populate grid fields without changing geometry',()=>{
+ const sorted=lines=>lines.map(l=>l.join(',')).sort();
+ for(const name of ['golden','fibonacci','baseline','ratio']){
+  const p=P.builtIn(name,context),c=N.toGrid(p.notation,context,p.config);
+  assert.deepEqual(sorted(G.plan(c,context).lines),sorted(N.compile(p.notation,context,p.config).lines),name);
+ }
+});
+
+test('short grid syntax keeps percentages and supports Chinese and English',()=>{
+ const c={...cfg(),cols:'3',rows:'2',margins:{top:'10%',right:'12pt',bottom:'10%',left:'12pt'}};
+ const source=N.fromGrid(c,context,'zh');assert.equal(source.split('\n').length,3);assert.match(source,/边距: 10%, 12pt/);assert.match(source,/列: 3, auto, 6pt/);
+ assert.deepEqual(N.compile(source,context,c).lines,G.plan(c,context).lines);
+ assert.deepEqual(N.compile('margin: 12pt\ncolumns: 3, auto, 4pt\nrows: 0',context,c).lines,G.plan({...c,margins:{top:'12pt',right:'12pt',bottom:'12pt',left:'12pt'},cols:'3',colWidth:'',gutterX:'4pt',rows:'0'},context).lines);
+ assert.throws(()=>N.compile('列: 3\n列: 4',context,c),/重复设置/);
+ assert.throws(()=>N.compile('边距: 1,2,3',context,c),/边距需要/);
+});
+
+test('short syntax preserves blank margins without adding boundary guides',()=>{
+ const c={...cfg(),cols:'0',rows:'0',border:false,margins:{top:'',right:'12pt',bottom:'',left:''}};
+ assert.deepEqual(N.compile(N.fromGrid(c,context),context,c).lines,G.plan(c,context).lines);
+});
