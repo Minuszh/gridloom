@@ -4,7 +4,7 @@
   <p>本插件使用 Codex 完成开发。</p>
   <p>为 Adobe Illustrator 绘制网格与参考线的紧凑面板。</p>
   <p><sub>CEP 12 &nbsp; / &nbsp; Illustrator &nbsp; / &nbsp; GPL-3.0</sub></p>
-  <p><b>中文</b> · <a href="README.en.md">English</a> &nbsp; · &nbsp; <a href="https://github.com/Minuszh/gridloom/releases">下载安装包</a></p>
+  <p><b>中文</b> · <a href="README.en.md">English</a> &nbsp; · &nbsp; <a href="docs/notation.md">Grid Notation</a></p>
 </div>
 
 ---
@@ -25,9 +25,7 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.17.zxp`。
-2. 将文件拖入 [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/)。
-3. 重启 Illustrator，在 **窗口 → 扩展功能 → gridloom** 中打开。
+公开测试安装包已撤下。目前可从源码安装，方法见下方。
 
 使用 CEP 12，清单支持 Illustrator 29.5.1–30.x。目前在 macOS Apple Silicon / Illustrator 30.8.2 上完成部分实机测试。
 

@@ -4,7 +4,7 @@
   <p>This plugin was developed with Codex.</p>
   <p>A compact panel for drawing grids and guides in Adobe Illustrator.</p>
   <p><sub>CEP 12 &nbsp; / &nbsp; Illustrator &nbsp; / &nbsp; GPL-3.0</sub></p>
-  <p><a href="README.md">中文</a> · <b>English</b> &nbsp; · &nbsp; <a href="https://github.com/Minuszh/gridloom/releases">Download</a></p>
+  <p><a href="README.md">中文</a> · <b>English</b> &nbsp; · &nbsp; <a href="docs/notation.md">Grid Notation</a></p>
 </div>
 
 ---
@@ -25,9 +25,7 @@ Enter counts directly or click the slider icon to adjust them. The canvas update
 
 ## Install
 
-1. Download `gridloom-0.3.17.zxp` from [Releases](https://github.com/Minuszh/gridloom/releases).
-2. Drag the file into [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/).
-3. Restart Illustrator and open **Window → Extensions → gridloom**.
+Public test packages have been withdrawn. Install from source using the steps below.
 
 Uses CEP 12, with a manifest range of Illustrator 29.5.1–30.x. Selected native operations have been tested on macOS Apple Silicon / Illustrator 30.8.2.
 
