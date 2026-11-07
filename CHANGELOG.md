@@ -3,6 +3,15 @@
 0.3.12 为首次公开预发布，早期版本为本地开发记录。
 0.3.12 is the first public pre-release; earlier entries document local development.
 
+## 0.3.14 — 2026-11-07
+
+- 数量框支持直接输入，点击滑条图标展开灰度滑条。
+  Enter counts directly or expand a grayscale slider with the slider icon.
+- 添加实时编辑、应用与取消；拖动复用参考线，并合并连续更新。
+  Add live editing, Apply, and Cancel; reuse guides and coalesce rapid updates.
+- 支持普通网格、书籍模式与自定义语法的实时调整。
+  Live editing supports regular grids, book layouts, and custom notation.
+
 ## 0.3.13 — 2026-11-07
 
 - 添加左右 / 上下双页书籍模式，支持普通网格、自定义语法、快捷线与预设。

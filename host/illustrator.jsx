@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 /* ExtendScript / ES3 only. No filesystem or arbitrary-script RPC. */
+if(typeof GridloomHost!=='undefined' && GridloomHost.liveEditing && GridloomHost.dispatch('liveCancel',{}).indexOf('\"ok\":false')>=0)throw new Error('请先取消实时编辑');
 var GridloomHost = (function () {
-    var pending = null, serial = 0, prefix = 'gridloom:1|';
+    var pending = null, live = null, serial = 0, prefix = 'gridloom:1|';
     function encode(value) {
         var type = typeof value, out = [], i, key;
         if (value === null || type === 'undefined') return 'null';
@@ -60,10 +61,13 @@ var GridloomHost = (function () {
     }
     function verified(token) {
         check(pending && pending.token===token, '操作已过期，请重新生成');
-        check(document()===pending.doc, '当前文档已切换，请重新生成');
-        check(rulerUnit(pending.doc)===pending.unit, '文档单位已变化，请重新生成');
-        check(encode(contexts(pending.doc,pending.options))===encode(pending.list), '选区或画板已变化，请重新生成');
-        return pending;
+        return verifyState(pending);
+    }
+    function verifyState(state) {
+        check(document()===state.doc, '当前文档已切换，请重新生成');
+        check(rulerUnit(state.doc)===state.unit, '文档单位已变化，请重新生成');
+        check(encode(contexts(state.doc,state.options))===encode(state.list), '选区或画板已变化，请重新生成');
+        return state;
     }
     function owned(path) { return path.note && path.note.indexOf(prefix)===0; }
     function intersects(bounds, area) { return bounds[0]<=area[2]+0.001 && bounds[2]>=area[0]-0.001 && bounds[1]>=area[3]-0.001 && bounds[3]<=area[1]+0.001; }
@@ -100,20 +104,105 @@ var GridloomHost = (function () {
         for(i=0;i<data.points.length;i++){p=path.pathPoints.add();p.anchor=data.points[i].anchor;p.leftDirection=data.points[i].left;p.rightDirection=data.points[i].right;p.pointType=data.points[i].type;}
         path.guides=true;check(path.guides===true, '无法创建原生参考线');path.note=data.note;path.name=data.name;path.hidden=data.hidden;path.locked=data.locked;return path;
     }
+    function validatePlans(plans, areas) {
+        var total=0,keys={},i,j,k,line;
+        check(plans instanceof Array && plans.length===areas.length,'网格范围不匹配');
+        for(i=0;i<plans.length;i++){
+            check(plans[i].key===areas[i].key,'网格范围不匹配');keys[prefix+plans[i].key+'|']=true;
+            check(plans[i].lines instanceof Array,'无效参考线列表');total+=plans[i].lines.length;
+            for(j=0;j<plans[i].lines.length;j++){
+                line=plans[i].lines[j];check(line instanceof Array && line.length===4,'无效参考线');
+                for(k=0;k<4;k++)check(typeof line[k]==='number'&&isFinite(line[k])&&Math.abs(line[k])<1e7,'坐标超出范围');
+                check(line[0]===line[2]||line[1]===line[3],'仅支持水平或垂直参考线');
+            }
+        }
+        check(total<=5000,'一次操作最多生成 5000 条参考线');return {total:total,keys:keys};
+    }
+    function liveState(id) {
+        check(live && live.id===id,'实时编辑已结束，请重新开启');
+        verifyState(live.state);
+        check(!live.layer.layer.locked && live.layer.layer.visible,'请先解锁并显示 gridloom 图层');
+        return live;
+    }
+    function beginLive(payload) {
+        check(!live,'请先应用或取消实时编辑');
+        var state=verified(payload.token),doc=state.doc,originals=[],i,j,p,n=payload.mode==='replace'?doc.pathItems.length:0;
+        for(i=0;i<n;i++){
+            p=doc.pathItems[i];if(!p.guides||!owned(p))continue;
+            for(j=0;j<state.list.length;j++)if(p.note.indexOf(prefix+state.list[j].key+'|')===0){
+                check(!p.locked&&p.editable,'范围内有锁定参考线，请先解锁');originals.push({path:p,hidden:p.hidden});break;
+            }
+        }
+        check(originals.length<=5000,'一次操作最多清除 5000 条参考线');
+        var oldLayer=doc.activeLayer;
+        try{live={id:'live-'+(++serial),state:state,layer:layerFor(doc),originals:originals,groups:[],pools:[],plans:null};}
+        finally{doc.activeLayer=oldLayer;}
+        pending=null;return {id:live.id};
+    }
+    function cancelLive() {
+        if(!live)return {};
+        var session=live,i,j,failures=0;
+        for(i=0;i<session.originals.length;i++)try{session.originals[i].path.hidden=session.originals[i].hidden;}catch(error){failures++;}
+        for(i=0;i<session.pools.length;i++)for(j=session.pools[i].length-1;j>=0;j--)try{session.pools[i][j].remove();session.pools[i].splice(j,1);}catch(error2){failures++;}
+        for(i=session.groups.length-1;i>=0;i--)if(session.groups[i])try{if(!session.groups[i].pageItems.length){session.groups[i].remove();session.groups[i]=null;}}catch(error3){failures++;}
+        if(session.layer.created)try{if(!session.layer.layer.pageItems.length)session.layer.layer.remove();}catch(error4){failures++;}
+        check(!failures,'预览恢复未完成，请检查图层并重试取消');
+        live=null;app.redraw();return {};
+    }
+    function updateLive(payload) {
+        var session=liveState(payload.id),plans=payload.plans,state=session.state,i,j,p,line,pool,group,oldLayer=state.doc.activeLayer;
+        validatePlans(plans,state.list);
+        try{
+            for(i=0;i<plans.length;i++){
+                group=session.groups[i];pool=session.pools[i]||[];session.pools[i]=pool;
+                if(!group && plans[i].lines.length){group=session.layer.layer.groupItems.add();session.groups[i]=group;group.name=state.list[i].name;group.note='gridloom:preview|'+session.id;}
+                for(j=0;j<plans[i].lines.length;j++){
+                    line=plans[i].lines[j];p=pool[j];
+                    if(!p){p=group.pathItems.add();pool.push(p);p.filled=false;p.stroked=false;}
+                    var previous=session.plans&&session.plans[i].lines[j];
+                    if(!previous||line[0]!==previous[0]||line[1]!==previous[1]||line[2]!==previous[2]||line[3]!==previous[3])p.setEntirePath([[line[0],line[1]],[line[2],line[3]]]);
+                    if(!p.guides)p.guides=true;check(p.guides===true,'无法创建原生参考线');if(p.hidden)p.hidden=false;
+                }
+                // Reuse surplus guides while dragging rather than repeatedly allocating objects.
+                for(j=plans[i].lines.length;j<pool.length;j++)if(!pool[j].hidden)pool[j].hidden=true;
+            }
+            for(i=0;i<session.originals.length;i++)if(!session.originals[i].path.hidden)session.originals[i].path.hidden=true;
+            session.plans=plans;app.redraw();return {guideState:guideState(state.doc)};
+        }catch(error){cancelLive();throw error;}
+        finally{try{state.doc.activeLayer=oldLayer;}catch(ignore){}}
+    }
+    function commitLive(payload) {
+        var session=liveState(payload.id),removed=[],parents=[],count=0,i,j,p,data,group;
+        check(session.plans,'请先调整网格');
+        try{
+            // Finalize the existing preview group, retaining its identity.
+            for(i=0;i<session.pools.length;i++){
+                var pool=session.pools[i],lines=session.plans[i].lines;
+                for(j=pool.length-1;j>=lines.length;j--){pool[j].remove();pool.pop();}
+                group=session.groups[i];if(group){
+                    if(!lines.length){group.remove();session.groups[i]=null;}
+                    else {group.note='gridloom:group|'+session.plans[i].key+'|'+session.id;
+                        for(j=0;j<pool.length;j++){pool[j].note=prefix+session.plans[i].key+'|'+session.id;count++;}}
+                }
+            }
+            for(i=0;i<session.originals.length;i++){
+                p=session.originals[i].path;data=pathData(p);data.hidden=session.originals[i].hidden;
+                p.remove();removed.push({index:i,data:data});parents.push(data.parent);
+            }
+        }catch(error){
+            var restoreFailures=0;
+            for(i=0;i<removed.length;i++)try{session.originals[removed[i].index].path=restore(removed[i].data);}catch(restoreError){restoreFailures++;}
+            if(restoreFailures)throw new Error('预览恢复未完成，请检查图层并重试取消');
+            cancelLive();throw error;
+        }
+        for(i=0;i<parents.length;i++)try{p=parents[i];if(p.typename==='GroupItem'&&p.note&&p.note.indexOf('gridloom:group|')===0&&!p.pageItems.length)p.remove();}catch(ignoreEmpty){}
+        session.layer.layer.name='gridloom';live=null;pending=null;app.redraw();return {count:count,removed:removed.length,guideState:guideState(session.state.doc)};
+    }
     function execute(payload, clearing) {
         var state=verified(payload.token), doc=state.doc, newPaths=[], newGroups=[], oldGroups=[], removed=[], toRemove=[], layerInfo=null, oldLayer=doc.activeLayer;
         var i,j,k,p,batch=String(new Date().getTime())+'-'+serial, plans=payload.plans || [],total=0,keys={},areas=state.list;
-        check(clearing || plans.length===areas.length, '网格范围不匹配');
-        for(i=0;i<plans.length;i++) {
-            check(plans[i].key===areas[i].key, '网格范围不匹配');keys[prefix+plans[i].key+'|']=true;
-            check(plans[i].lines instanceof Array, '无效参考线列表');total+=plans[i].lines.length;
-            for(j=0;j<plans[i].lines.length;j++) {
-                p=plans[i].lines[j];check(p.length===4, '无效参考线');
-                for(k=0;k<4;k++)check(typeof p[k]==='number'&&isFinite(p[k])&&Math.abs(p[k])<1e7, '坐标超出范围');
-                check(p[0]===p[2]||p[1]===p[3], '仅支持水平或垂直参考线');
-            }
-        }
-        check(total<=5000, '一次操作最多生成 5000 条参考线');
+        check(!live,'请先应用或取消实时编辑');
+        if(!clearing){var validation=validatePlans(plans,areas);total=validation.total;keys=validation.keys;}
         if(!clearing && total===0) return {count:0,removed:0};
         // Appending never needs to inspect existing artwork. Cache the native collection size.
         var pathCount, paths=(clearing || payload.mode==='replace')?doc.pathItems:null;
@@ -158,10 +247,15 @@ var GridloomHost = (function () {
             throw error;
         } finally {try{doc.activeLayer=oldLayer;}catch(ignore4){}}
     }
-    return {dispatch:function(method,payload){
+    return {liveEditing:true,dispatch:function(method,payload){
         try {
             var result;
-            if(method==='context')result=read(payload || {});
+            if(method==='liveBegin')result=beginLive(payload);
+            else if(method==='liveUpdate')result=updateLive(payload);
+            else if(method==='liveCommit')result=commitLive(payload);
+            else if(method==='liveCancel')result=cancelLive();
+            else if(method==='liveCheck'){liveState(payload.id);result={};}
+            else if(method==='context')result=read(payload || {});
             else if(method==='apply')result=execute(payload,false);
             else if(method==='clear')result=execute(payload,true);
             else if(method==='lockGuides')result=toggleLayer('locked');

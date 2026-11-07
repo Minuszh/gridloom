@@ -21,9 +21,11 @@
 
 界面跟随 Illustrator 的语言、字体与主题，使用灰度图标。没有悬停提示和常驻计数，只有出错时显示文字。
 
+数量可以直接输入，也可点击右侧滑条图标展开调整。开启 **实时编辑** 后，画布随参数更新；点击 **应用** 保留，点击 **取消** 恢复。左右／上下双页使用同一套参数。
+
 ## 安装
 
-1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.13.zxp`。
+1. 从 [Releases](https://github.com/Minuszh/gridloom/releases) 下载 `gridloom-0.3.14.zxp`。
 2. 将文件拖入 [ZXP/UXP Installer](https://aescripts.com/learn/zxp-installer/)。
 3. 重启 Illustrator，在 **窗口 → 扩展功能 → gridloom** 中打开。
 

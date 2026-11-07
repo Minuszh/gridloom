@@ -106,3 +106,41 @@ test('failed replacement restores guides to their original group',()=>{
  assert.equal(e.call('apply',{token:c.token,mode:'replace',plans:[{key:'artboard:0',lines:[[140,900,140,306]]}]}).ok,false);
  assert.equal(e.run('doc.layers[1].groupItems.length'),1);assert.equal(e.run('originalGroup.pageItems.length'),2);assert.equal(e.run('doc.pathItems[1].parent===originalGroup'),true);
 });
+
+function startLive(e,mode='replace'){const c=e.call('context',{}).value;const result=e.call('liveBegin',{token:c.token,mode});assert.equal(result.ok,true);return result.value.id;}
+function preview(e,id,xs){return e.call('liveUpdate',{id,plans:[{key:'artboard:0',lines:xs.map(x=>[x,900,x,306])}]});}
+test('live editing reuses paths and group, trims surplus only on commit',()=>{
+ const e=environment(),id=startLive(e);assert.equal(preview(e,id,[120,140,160]).ok,true);
+ e.run('var first=doc.pathItems[0],group=first.parent');const adds=e.run('adds');
+ assert.equal(preview(e,id,[125]).ok,true);assert.equal(e.run('doc.pathItems.length'),3);assert.equal(e.run('doc.pathItems[1].hidden'),true);
+ assert.equal(preview(e,id,[130,150]).ok,true);assert.equal(e.run('adds'),adds);assert.equal(e.run('doc.pathItems[0]===first'),true);
+ assert.equal(e.call('liveCommit',{id}).value.count,2);assert.equal(e.run('doc.pathItems.length'),2);assert.equal(e.run('first.parent===group'),true);
+ assert.match(e.run('first.note'),/^gridloom:1\|artboard:0\|/);assert.equal(e.run('group.name'),'A');
+});
+test('cancel keeps original objects and visibility; removes preview layer',()=>{
+ const e=environment();e.run("var original=doc.activeLayer.pathItems.add();original.guides=true;original.note='gridloom:1|artboard:0|old';original.setEntirePath([[140,900],[140,306]]);");
+ const id=startLive(e);preview(e,id,[120]);assert.equal(e.run('original.hidden'),true);
+ assert.equal(e.call('liveCancel',{}).ok,true);assert.equal(e.run('doc.pathItems.length'),1);assert.equal(e.run('doc.pathItems[0]===original'),true);assert.equal(e.run('original.hidden'),false);assert.equal(e.run('doc.layers.length'),1);
+});
+test('live append keeps original grid and commit tags new grid',()=>{
+ const e=environment(),c=e.call('context',{}).value;e.call('apply',{token:c.token,plans:[{key:'artboard:0',lines:[[120,900,120,306]]}],mode:'append'});
+ const id=startLive(e,'append');preview(e,id,[140]);assert.equal(e.run('doc.pathItems[0].hidden'),false);
+ assert.equal(e.call('liveCommit',{id}).value.removed,0);assert.equal(e.run('doc.pathItems.length'),2);
+});
+test('live rejects changed scope and can still cancel in another document',()=>{
+ const e=environment(),id=startLive(e);preview(e,id,[120]);e.run('doc.artboards[0].artboardRect[0]=99');assert.equal(preview(e,id,[140]).ok,false);
+ e.run('app.activeDocument={name:"Other"}');assert.equal(e.call('liveCommit',{id}).ok,false);assert.equal(e.call('liveCancel',{}).ok,true);assert.equal(e.run('doc.pathItems.length'),0);
+});
+test('live validates plans before mutation and rolls back creation failures',()=>{
+ const e=environment(),id=startLive(e);preview(e,id,[120]);
+ assert.equal(e.call('liveUpdate',{id,plans:[{key:'artboard:0',lines:[[1,2,3,4]]}]}).ok,false);assert.equal(e.run('doc.pathItems.length'),1);
+ e.run('failAddAt=adds+1');assert.equal(preview(e,id,[140,160]).ok,false);assert.equal(e.run('doc.pathItems.length'),0);
+});
+test('live replacement commits and removes only matching owned guides',()=>{
+ const e=environment();e.run("var original=doc.activeLayer.pathItems.add();original.guides=true;original.note='gridloom:1|artboard:0|old';original.setEntirePath([[140,900],[140,306]]);var manual=doc.activeLayer.pathItems.add();manual.guides=true;");
+ const id=startLive(e);preview(e,id,[120]);const result=e.call('liveCommit',{id});assert.equal(result.ok,true);assert.equal(result.value.removed,1);assert.equal(e.run('doc.pathItems.indexOf(manual)>=0'),true);
+});
+test('live commit failure restores removed originals',()=>{
+ const e=environment();e.run("var first=doc.activeLayer.pathItems.add();first.guides=true;first.note='gridloom:1|artboard:0|old';first.setEntirePath([[120,900],[120,306]]);var second=doc.activeLayer.pathItems.add();second.guides=true;second.note=first.note;second.setEntirePath([[140,900],[140,306]]);second.remove=function(){throw Error('delete failed');};");
+ const id=startLive(e);preview(e,id,[160]);assert.equal(e.call('liveCommit',{id}).ok,false);assert.equal(e.run('doc.pathItems.length'),2);assert.equal(e.run('doc.pathItems.every(function(p){return !p.hidden;})'),true);
+});

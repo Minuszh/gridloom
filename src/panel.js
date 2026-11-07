@@ -9,10 +9,11 @@
  const $=id=>document.getElementById(id),all=s=>Array.from(document.querySelectorAll(s));
  const fields=['cols','rows','colWidth','rowHeight','gutterX','gutterY','alignX','alignY','book'];
  let mode='grid',context=null,presets=[],editing=-1,working=false,refreshId=0,notationUnit=null;
+ let liveSession=null,liveQueue=null,baseline=null,liveFailure=null,lastLiveKey=null;
  let planCache=null,refreshTask=null,lastHint='',presetsMounted=false;
  function guideButtons(state){
   for(const [id,key,on,off,label] of [['lock-guides','locked','lock','unlock','Lock gridloom layer'],['visibility','visible','eye','eyeOff','Show gridloom layer']]){
-   const button=$(id),known=Boolean(state?.exists);button.disabled=working||!H.available||!known;
+   const button=$(id),known=Boolean(state?.exists);button.disabled=working||!!liveSession||!H.available||!known;
    button.setAttribute('aria-label',t(label));
    if(known)button.setAttribute('aria-pressed',String(state[key]));else button.removeAttribute('aria-pressed');
    window.GridloomIcons.set(button,known&&!state[key]?off:on);
@@ -35,7 +36,7 @@
   return H.call('context',{scope:'auto',visibleBounds:false});
  }
  async function refresh(){
-  if(working)return;if(refreshTask)return refreshTask;
+  if(working||liveSession)return;if(refreshTask)return refreshTask;
   const request=++refreshId;
   refreshTask=(async()=>{try{const next=await read();if(request!==refreshId)return;context=next;guideButtons(next.guideState);render();}catch(error){if(request!==refreshId)return;context=null;guideButtons(null);$('apply').disabled=true;status(error.message,true);}})();
   try{await refreshTask;}finally{refreshTask=null;}
@@ -50,26 +51,63 @@
  }
  function render(){
   try{
+   if(liveFailure)throw liveFailure;
    const c=config(),plans=compute(c),u=G.UNITS[c.unit];
    const hint=t('Bare values use document units ({unit}).',{unit:context.unit||'pt'});
    if(hint!==lastHint){lastHint=hint;all('#page-grid input:not([type=checkbox]):not([type=number])').forEach(el=>el.setAttribute('aria-description',hint));}
    const count=plans.reduce((n,p)=>n+p.lines.length,0);
    if(mode==='grid'){const p=plans[0];$('column-result').textContent=p.columns.count?`${Number((p.columns.size/u).toFixed(3))} ${c.unit}`:'';$('row-result').textContent=p.rows.count?`${Number((p.rows.size/u).toFixed(3))} ${c.unit}`:'';}
    $('apply').disabled=working||!H.available||count===0;
+   syncSliders(plans);if(liveSession&&!working)liveQueue.push(wire(plans));
    status(t('{n} guides',{n:count})+(plans.length>1?' · '+t('{n} artboards',{n:plans.length}):''));
-  }catch(error){$('apply').disabled=true;status(error.message,true);}
+  }catch(error){if(liveQueue)liveQueue.clear();$('apply').disabled=true;status(error.message,true);}
  }
- async function action(fn){if(working)return;working=true;++refreshId;const controls=all('button,input,select,textarea'),disabled=controls.map(el=>el.disabled);controls.forEach(el=>el.disabled=true);status(t('Working…'));try{if(refreshTask)await refreshTask;await fn();}catch(error){status(error.message,true);}finally{working=false;controls.forEach((el,i)=>el.disabled=disabled[i]);guideButtons(context?.guideState);}}
- $('apply').onclick=()=>action(async()=>{context=await read();const plans=compute();const result=await H.call('apply',{token:context.token,plans:plans.map(p=>({key:p.key,lines:p.lines})),mode:$('write-mode').value});context.guideState=result.guideState;status(t('Created {n}; replaced {r}.',{n:result.count,r:result.removed}));});
+ async function action(fn){if(working)return;working=true;++refreshId;const controls=all('button,input,select,textarea'),disabled=controls.map(el=>el.disabled);controls.forEach(el=>el.disabled=true);status(t('Working…'));try{if(refreshTask)await refreshTask;await fn();}catch(error){status(error.message,true);}finally{working=false;controls.forEach((el,i)=>el.disabled=disabled[i]);guideButtons(context?.guideState);liveControls();try{$('apply').disabled=!H.available||!!liveFailure||compute().every(p=>!p.lines.length);}catch{$('apply').disabled=true;}}}
+ $('apply').onclick=()=>action(async()=>{if(liveSession){await liveQueue.flush(wire(compute()));const result=await H.call('liveCommit',{id:liveSession});context.guideState=result.guideState;await endLive(false);return;}context=await read();const plans=compute();const result=await H.call('apply',{token:context.token,plans:plans.map(p=>({key:p.key,lines:p.lines})),mode:$('write-mode').value});context.guideState=result.guideState;status(t('Created {n}; replaced {r}.',{n:result.count,r:result.removed}));});
  $('clear').onclick=()=>action(async()=>{context=await read();const result=await H.call('clear',{token:context.token,clearMode:'owned'});context.guideState=result.guideState;status(t('Removed {n} guides.',{n:result.removed}));});
  $('lock-guides').onclick=()=>action(async()=>{const state=await H.call('lockGuides');if(context)context.guideState=state;status(t(state.locked?'gridloom layer locked.':'gridloom layer unlocked.'));});
  $('visibility').onclick=()=>action(async()=>{const state=await H.call('visibility');if(context)context.guideState=state;status(t(state.visible?'gridloom layer shown.':'gridloom layer hidden.'));});
  all('[data-quick]').forEach(b=>{b.setAttribute('aria-label',t(({left:'Left edge',center:'Vertical center',right:'Right edge',top:'Top edge',middle:'Horizontal center',bottom:'Bottom edge'})[b.dataset.quick]));b.onclick=()=>action(async()=>{context=await read();const plans=context.contexts.map(c=>({key:c.key,lines:G.book(config(),c,(settings,page)=>({lines:G.quick(b.dataset.quick,page,settings.guideLength)})).lines}));const result=await H.call('apply',{token:context.token,plans,mode:'append'});context.guideState=result.guideState;status(t('Added {n} guides.',{n:result.count}));});});
  $('reset').onclick=()=>{const c=G.defaults();for(const key of Object.keys(c.margins))c.margins[key]='';for(const key of ['cols','rows','colWidth','rowHeight','gutterX','gutterY'])c[key]='';setConfig(c);$('notation').value='';notationUnit=null;$('save-form').hidden=true;editing=-1;tab('grid');};
- all('#page-grid input').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)['top','right','bottom','left'].forEach(k=>$('margin-'+k).value=el.value);render();});
+ all('#page-grid input:not([type=range])').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)['top','right','bottom','left'].forEach(k=>$('margin-'+k).value=el.value);render();});
  fields.filter(k=>!['cols','rows','colWidth','rowHeight','gutterX','gutterY'].includes(k)).concat(['border']).forEach(k=>$(k).onchange=render);
  $('notation').oninput=()=>{notationUnit=null;render();};
 
+ function wire(plans){return plans.map(p=>({key:p.key,lines:p.lines}));}
+ function syncSliders(plans){
+  for(const [key,axis] of [['cols','columns'],['rows','rows']]){
+   const input=$(key),range=$(key+'-range'),value=input.value===''?(plans[0][axis]?.count||0):Number(input.value);
+   range.max=Math.min(1000,Math.max(Number(range.max),24,Math.ceil(value/12)*12));range.value=value;
+  }
+ }
+ for(const key of ['cols','rows']){
+  const toggle=$(key+'-toggle'),slider=$(key+'-slider'),range=$(key+'-range');
+  toggle.onclick=()=>{slider.hidden=!slider.hidden;toggle.setAttribute('aria-expanded',String(!slider.hidden));};
+  range.oninput=()=>{$(key).value=range.value;render();};
+  range.onkeydown=e=>{if(e.key==='Escape'){slider.hidden=true;toggle.setAttribute('aria-expanded','false');toggle.focus();}};
+ }
+ function liveControls(){
+  $('live-edit').checked=!!liveSession;$('live-edit').disabled=working||!H.available;
+  $('live-cancel').hidden=!liveSession;$('apply').textContent=t(liveSession?'Apply':'Add guides');
+  for(const el of [$('clear'),$('write-mode'),...all('[data-quick]')])el.disabled=working||!!liveSession||!H.available;
+ }
+ async function endLive(restore){
+  if(liveQueue)await liveQueue.stop();liveQueue=null;liveSession=null;
+  if(restore&&baseline){setConfig(baseline.config);$('notation').value=baseline.notation;notationUnit=baseline.config.unit;mode=baseline.mode;tab(mode);}
+  baseline=null;liveFailure=null;lastLiveKey=null;liveControls();status('');
+ }
+ async function cancelLive(){
+  if(liveQueue)await liveQueue.stop();await H.call('liveCancel');await endLive(true);
+ }
+ $('live-cancel').onclick=()=>action(cancelLive);
+ $('live-edit').onchange=()=>action(async()=>{
+  if(liveSession){await cancelLive();return;}
+  context=await read();const plans=wire(compute());baseline=currentPreset('');
+  const result=await H.call('liveBegin',{token:context.token,mode:$('write-mode').value});liveSession=result.id;
+  liveQueue=window.GridloomLive.queue(async plans=>{const key=JSON.stringify(plans);if(key===lastLiveKey)return;const value=await H.call('liveUpdate',{id:liveSession,plans});context.guideState=value.guideState;lastLiveKey=key;},error=>{liveFailure=error;$('apply').disabled=true;status(error.message,true);});
+  liveControls();await liveQueue.flush(plans);
+ });
+ window.addEventListener('beforeunload',()=>{if(liveQueue)liveQueue.stop().then(()=>H.call('liveCancel')).catch(()=>{});});
  function selectPreset(p){setConfig(p.config);$('notation').value=p.notation;notationUnit=p.config.unit;mode=p.mode;render();}
  function load(p){selectPreset(p);tab(p.mode);}
  function thumbnail(p){
@@ -104,5 +142,6 @@
  }
  const layoutObserver=new ResizeObserver(fitPanel);layoutObserver.observe($('content-layout'));layoutObserver.observe(document.querySelector('footer'));
  document.fonts.ready.then(fitPanel);fitPanel();
- window.addEventListener('focus',refresh);refresh();
+ window.addEventListener('focus',refresh);liveControls();
+ if(H.available)H.call('liveCancel').then(refresh).catch(error=>status(error.message,true));else refresh();
 })();

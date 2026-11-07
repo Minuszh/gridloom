@@ -31,3 +31,16 @@ html,body{height:100%;overflow:hidden}main{height:100%;display:flex;flex-directi
 
 /* Reserve space to keep tabs stable, but display only errors. */
 #status:not(.error){visibility:hidden}
+
+/* Counts retain exact entry; the optional slider occupies its own row. */
+.count-control{display:flex;align-items:center;background:var(--field,#262626);border:1px solid var(--edge);border-radius:2px;overflow:hidden}
+.count-control input{border:0;background:transparent;min-width:0;width:100%;appearance:textfield;-moz-appearance:textfield}
+.count-control input::-webkit-inner-spin-button,.count-control input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.count-control .slider-toggle{flex:0 0 24px;padding:3px;border:0;background:transparent;color:var(--muted);min-width:0;display:flex;align-items:center;justify-content:center}
+.slider-toggle[aria-expanded=true]{color:var(--text)}
+.count-slider{padding:9px 2px 0}
+.count-slider input[type=range]{appearance:none;-webkit-appearance:none;width:100%;height:18px;margin:0;padding:0;background:transparent;border:0;cursor:ew-resize}
+.count-slider input::-webkit-slider-runnable-track{height:2px;background:var(--edge)}
+.count-slider input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-5px;border:2px solid var(--muted);border-radius:50%;background:var(--surface)}
+.slider-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:.9em}
+.live-control{margin-bottom:2px}

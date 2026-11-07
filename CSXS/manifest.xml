@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="studio.gridloom" ExtensionBundleVersion="0.3.13" ExtensionBundleName="gridloom">
-  <ExtensionList><Extension Id="studio.gridloom.panel" Version="0.3.13"/></ExtensionList>
+<ExtensionManifest Version="7.0" ExtensionBundleId="studio.gridloom" ExtensionBundleVersion="0.3.14" ExtensionBundleName="gridloom">
+  <ExtensionList><Extension Id="studio.gridloom.panel" Version="0.3.14"/></ExtensionList>
   <ExecutionEnvironment>
     <HostList><Host Name="ILST" Version="[29.5.1,30.99]"/></HostList>
     <LocaleList><Locale Code="All"/></LocaleList>

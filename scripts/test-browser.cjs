@@ -111,7 +111,26 @@ async function main(){
  assert(await evaluate(`!document.getElementById('status').classList.contains('error')`),'Book mode should render');
  await evaluate(`document.getElementById('save').click();document.getElementById('preset-name').value='Book UI';document.getElementById('save-confirm').click();`);
  assert(await evaluate(`JSON.parse(localStorage.getItem('gridloom.presets.v1')).presets.some(p=>p.name==='Book UI'&&p.config.book==='horizontal')`),'Preset must retain book mode');
- console.log('UI passed: 260/320/400px, no preview/unit selector, EN/ZH, mixed units, notation/captures/arithmetic errors, preset save, reset, field notation, disabled host writes, zero-row margins, expanding settings, stable tabs/footer, internal list/error scrolling and constrained docked actions.');
+
+ // Collapsible count sliders and the live-edit lifecycle, with an asynchronous host double.
+ await evaluate(`document.getElementById('save-form').hidden=true;document.getElementById('options').open=false;document.getElementById('tab-grid').click();document.getElementById('cols-toggle').click();`);
+ assert(await evaluate(`!document.getElementById('cols-slider').hidden&&document.getElementById('cols-toggle').getAttribute('aria-expanded')==='true'`),'Slider must open beneath count fields');
+ assert(await evaluate(`getComputedStyle(document.getElementById('cols')).appearance==='textfield'&&document.querySelector('#cols-toggle svg')`),'Count must use a numeric entry and slider icon');
+ await evaluate(`document.getElementById('cols-range').value='6';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));`);
+ assert(await evaluate(`document.getElementById('cols').value==='6'`),'Slider must synchronize exact count');
+ await evaluate(`window.liveCalls=[];window.liveBusy=false;window.liveOverlap=false;window.liveInitial=document.getElementById('cols').value;GridloomHostClient.available=true;GridloomHostClient.call=async(method,payload)=>{if(liveBusy)liveOverlap=true;liveBusy=true;liveCalls.push({method,payload});await new Promise(r=>setTimeout(r,15));liveBusy=false;if(method==='context')return {token:'test',unit:'pt',contexts:[{key:'artboard:0',bounds:[0,594,420,0],artboard:[0,594,420,0]}],guideState:{exists:true,locked:false,visible:true}};if(method==='liveBegin')return {id:'test-live'};return {guideState:{exists:true,locked:false,visible:true}};};document.getElementById('live-edit').disabled=false;document.getElementById('live-edit').click();new Promise(r=>setTimeout(r,100))`);
+ assert(await evaluate(`!document.getElementById('live-cancel').hidden&&document.getElementById('apply').textContent==='应用'&&document.getElementById('clear').disabled`),'Live session controls failed');
+ await evaluate(`for(const count of [3,4,5,7,8]){document.getElementById('cols-range').value=count;document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));}new Promise(r=>setTimeout(r,200))`);
+ assert(await evaluate(`liveCalls.filter(c=>c.method==='liveUpdate').length===2&&!liveOverlap`),'Rapid dragging must coalesce into one serialized update');
+ await evaluate(`document.getElementById('live-cancel').click();new Promise(r=>setTimeout(r,100))`);
+ assert(await evaluate(`document.getElementById('cols').value===liveInitial&&!document.getElementById('live-edit').checked&&document.getElementById('live-cancel').hidden&&liveCalls.at(-1).method==='liveCancel'`),'Cancel must restore form and end preview');
+ await evaluate(`document.getElementById('live-edit').click();new Promise(r=>setTimeout(r,100))`);
+ await evaluate(`document.getElementById('cols-range').value='9';document.getElementById('cols-range').dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('apply').click();new Promise(r=>setTimeout(r,100))`);
+ assert(await evaluate(`liveCalls.at(-1).method==='liveCommit'&&!document.getElementById('live-edit').checked&&document.getElementById('cols').value==='9'&&!liveOverlap`),'Apply must flush the final value before commit');
+ await send('Emulation.setDeviceMetricsOverride',{width:320,height:500,deviceScaleFactor:1,mobile:false});
+ if(process.env.GRIDLOOM_SCREENSHOT){await evaluate(`document.getElementById('panel-content').scrollTop=0`);const image=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(process.env.GRIDLOOM_SCREENSHOT.replace('.png','-slider.png'),Buffer.from(image.data,'base64'));}
+ await evaluate(`GridloomHostClient.call=originalCall;GridloomHostClient.available=false;`);
+ console.log('UI passed: collapsible sliders, coalesced live updates, apply/cancel, 260/320/400px, no preview/unit selector, EN/ZH, mixed units, notation/captures/arithmetic errors, preset save, reset, field notation, disabled host writes, zero-row margins, expanding settings, stable tabs/footer, internal list/error scrolling and constrained docked actions.');
  await send('Browser.close',{},null);
 }
 main().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(ws)ws.close();chrome.kill();await new Promise(r=>setTimeout(r,300));try{fs.rmSync(profile,{recursive:true,force:true});}catch{}});

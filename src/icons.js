@@ -2,6 +2,7 @@
 /* Small task-specific symbols, not a copy of Illustrator's private assets. */
 window.GridloomIcons={mount(t){
  const shapes={
+  slider:'<path d="M1 8h4m6 0h4"/><circle cx="8" cy="8" r="3"/>',
   left:'<path d="M3 2v12M12 8H6m3-3L6 8l3 3"/>',
   center:'<path d="M8 2v12M1 8h4L3 6m2 2-2 2m12-2h-4l2-2m-2 2 2 2"/>',
   right:'<path d="M13 2v12M4 8h6M7 5l3 3-3 3"/>',
@@ -22,6 +23,7 @@ window.GridloomIcons={mount(t){
  for(const [id,name,label] of [['clear','clear','Clear'],['visibility','eye','Show / hide'],['lock-guides','lock','Lock / unlock guides'],['reset','refresh','Reset form']]){
   const button=document.getElementById(id);button.removeAttribute('data-i18n');this.set(button,name);button.setAttribute('aria-label',t(label));button.classList.add('icon-button');
  }
+ for(const key of ['cols','rows'])this.set(document.getElementById(key+'-toggle'),'slider');
  const linked=document.getElementById('linked'),label=linked.parentElement,span=label.querySelector('span');
  span.removeAttribute('data-i18n');span.innerHTML=svg('link');linked.setAttribute('aria-label',t('Link'));label.classList.add('icon-check');
 }};
