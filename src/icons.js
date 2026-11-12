@@ -2,6 +2,8 @@
 /* Small task-specific symbols, not a copy of Illustrator's private assets. */
 window.GridloomIcons={mount(t){
  const shapes={
+  centerH:'<rect x="3" y="3" width="10" height="10" opacity=".5"/><path d="M1 8h14"/>',
+  centerV:'<rect x="3" y="3" width="10" height="10" opacity=".5"/><path d="M8 1v14"/>',
   slider:'<path d="M1 8h4m6 0h4"/><circle cx="8" cy="8" r="3"/>',
   left:'<path d="M3 2v12M12 8H6m3-3L6 8l3 3"/>',
   center:'<path d="M8 2v12M1 8h4L3 6m2 2-2 2m12-2h-4l2-2m-2 2 2 2"/>',
@@ -20,7 +22,7 @@ window.GridloomIcons={mount(t){
  const svg=name=>'<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false">'+shapes[name]+'</svg>';
  this.set=(button,name)=>{if(button.dataset.icon===name)return;button.dataset.icon=name;button.innerHTML=svg(name);};
  document.querySelectorAll('[data-quick]').forEach(button=>{button.removeAttribute('data-i18n');this.set(button,button.dataset.quick);button.classList.add('icon-button');});
- for(const [id,name,label] of [['live-preview','eye','Live preview'],['visibility','eye','Show / hide'],['lock-guides','lock','Lock / unlock guides'],['reset','refresh','Reset form']]){
+ for(const [id,name,label] of [['center-h','centerH','Horizontal center'],['center-v','centerV','Vertical center'],['live-preview','eye','Live preview'],['visibility','eye','Show / hide'],['lock-guides','lock','Lock / unlock guides'],['reset','refresh','Reset form']]){
   const button=document.getElementById(id);button.removeAttribute('data-i18n');this.set(button,name);button.setAttribute('aria-label',t(label));button.classList.add('icon-button');
  }
  for(const key of ['cols','rows'])this.set(document.getElementById(key+'-toggle'),'slider');

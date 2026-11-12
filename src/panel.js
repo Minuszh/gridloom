@@ -9,6 +9,8 @@
  const fields=['cols','rows','colWidth','rowHeight','gutterX','gutterY','alignX','alignY','book'];
  let mode='grid',context=null,presets=[],editing=-1,working=false,refreshId=0,notationUnit=null;
  let previewEnabled=false;
+ let centerH=false,centerV=false;
+ const marginKeys=['top','right','bottom','left','inner','outer'];
  let liveSession=null,liveQueue=null,liveFailure=null,lastLiveKey=null;
  let planCache=null,refreshTask=null,lastHint='',presetsMounted=false,formInitialized=false,sessionKey=null,notationOriginKey=null;
  function guideButtons(state){
@@ -20,15 +22,16 @@
   }
  }
  const status=(text,error=false)=>{$('status').textContent=error?I.error(text):text;$('status').classList.toggle('error',error);$('status').setAttribute('aria-hidden',String(!error));};
- function config(){return {unit:mode==='notation'&&notationUnit?notationUnit:(context?.unit||'pt'),margins:Object.fromEntries(['top','right','bottom','left'].map(k=>[k,$('margin-'+k).value])),...Object.fromEntries(fields.map(k=>[k,$(k).value])),precision:3,guideLength:'artboard',border:false};}
+ function config(){return {unit:mode==='notation'&&notationUnit?notationUnit:(context?.unit||'pt'),centerH,centerV,margins:Object.fromEntries(marginKeys.map(k=>[k,$('margin-'+k).value])),...Object.fromEntries(fields.map(k=>[k,$(k).value])),precision:3,guideLength:'artboard',border:false};}
  function setConfig(c){
   const explicit=value=>{try{return G.qualify(value,c.unit);}catch{return value;}};
-  for(const k in c.margins)$('margin-'+k).value=explicit(c.margins[k]);
+  centerH=!!c.centerH;centerV=!!c.centerV;
+  for(const k of marginKeys)$('margin-'+k).value=explicit(c.margins[k]??c.margins[k==='inner'?'right':'left']);
   fields.forEach(k=>$(k).value=['colWidth','rowHeight','gutterX','gutterY'].includes(k)?explicit(c[k]):(k==='book'?(c.book||'none'):c[k]));
  }
  const currentPreset=name=>({name,mode,config:config(),notation:$('notation').value});
  function gridSettings(){return JSON.stringify({version:1,mode,config:config(),notation:$('notation').value});}
- function gridKey(){return JSON.stringify([fields.map(k=>$(k).value),['top','right','bottom','left'].map(k=>$('margin-'+k).value)]);}
+ function gridKey(){return JSON.stringify([centerH,centerV,fields.map(k=>$(k).value),marginKeys.map(k=>$('margin-'+k).value)]);}
  function saveSession(){
   if(!sessionKey)return;
   try{localStorage.setItem(sessionKey,JSON.stringify({mode,tab:document.querySelector('[aria-selected=true][data-tab]')?.dataset.tab||'grid',config:config(),notation:$('notation').value,notationUnit,notationOriginKey,linked:$('linked').checked}));}catch(ignore){}
@@ -40,7 +43,7 @@
    sessionKey=key+'.'+session.id;
    if(data?.id!==session.id){if(data?.id)localStorage.removeItem(key+'.'+data.id);localStorage.setItem(key,JSON.stringify({id:session.id}));return;}
    const saved=JSON.parse(localStorage.getItem(sessionKey)||'null');if(!saved)return;
-   for(const k of fields)$(k).value=saved.config[k];for(const k of ['top','right','bottom','left'])$('margin-'+k).value=saved.config.margins[k];
+   setConfig(saved.config);
    $('notation').value=saved.notation;notationUnit=saved.notationUnit;notationOriginKey=saved.notationOriginKey;mode=saved.mode;$('linked').checked=saved.linked;formInitialized=true;tab(saved.tab);
   }catch(error){status(error.message,true);}
  }
@@ -89,6 +92,9 @@
   planCache={key,plans};return plans;
  }
  function syncSettings(){
+  $('center-h').setAttribute('aria-pressed',String(centerH));$('center-v').setAttribute('aria-pressed',String(centerV));
+  const visible=$('book').value==='horizontal'?['top','bottom','inner','outer']:$('book').value==='vertical'?['left','right','inner','outer']:['top','right','bottom','left'];
+  marginKeys.forEach(k=>{const label=$('margin-'+k).parentElement;label.hidden=!visible.includes(k);label.style.order=visible.indexOf(k);});
   all('[data-position]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.position===$('alignX').value+','+$('alignY').value)));
   all('[data-book]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.book===$('book').value)));
  }
@@ -96,6 +102,7 @@
   const button=document.createElement('button');button.dataset.position=x+','+y;button.setAttribute('aria-label',t(vertical)+' · '+t(horizontal));
   button.onclick=()=>{$('alignX').value=x;$('alignY').value=y;changed();};$('position-grid').append(button);
  }
+ $('center-h').onclick=()=>{centerH=!centerH;changed();};$('center-v').onclick=()=>{centerV=!centerV;changed();};
  all('[data-book]').forEach(button=>button.onclick=()=>{$('book').value=button.dataset.book;changed();});
  function render(){
   syncSettings();
@@ -116,7 +123,7 @@
  $('lock-guides').onclick=()=>action(async()=>{if(liveSession){await liveQueue.flush(wire(compute()));const result=await H.call('liveCommit',{id:liveSession,settings:gridSettings()});context.guideState=result.guideState;await endLive();}previewEnabled=false;syncPreview();const state=await H.call('lockGuides');if(context)context.guideState=state;status(t(state.locked?'gridloom layer locked.':'gridloom layer unlocked.'));});
  $('visibility').onclick=()=>action(async()=>{const state=await H.call('visibility');if(context)context.guideState=state;status(t(state.visible?'gridloom layer shown.':'gridloom layer hidden.'));});
  $('reset').onclick=()=>{const c=G.defaults();for(const key of Object.keys(c.margins))c.margins[key]='';for(const key of ['cols','rows','colWidth','rowHeight','gutterX','gutterY'])c[key]='';setConfig(c);$('notation').value='';notationUnit=null;$('save-form').hidden=true;editing=-1;tab('grid');changed();};
- all('#page-grid input:not([type=range])').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)['top','right','bottom','left'].forEach(k=>$('margin-'+k).value=el.value);if(el.id==='linked'){render();saveSession();}else changed();});
+ all('#page-grid input:not([type=range])').forEach(el=>el.oninput=()=>{if(el.id.startsWith('margin-')&&$('linked').checked)marginKeys.forEach(k=>$('margin-'+k).value=el.value);if(el.id==='linked'){render();saveSession();}else changed();});
  all('#page-grid input:not([type])').forEach(el=>el.addEventListener('keydown',event=>{
   if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')return;
   const match=el.value.match(/^(\s*)([+-]?(?:\d+\.?\d*|\.\d+))(\s*(?:[a-zA-Z%]+)?\s*)$/);
@@ -193,10 +200,23 @@
  $('import').onclick=()=>$('import-file').click();$('import-file').onchange=async()=>{try{const file=$('import-file').files[0];if(!file)return;G.assert(file.size<1000000,'文件过大');const incoming=P.decode(await file.text());G.assert(presets.length+incoming.length<=100,'预设总数超过 100');presets.push(...incoming);list();status(t('Imported {n} presets.',{n:incoming.length}));store();}catch(error){status(error.message,true);}finally{$('import-file').value='';}};
  try{const raw=localStorage.getItem('gridloom.presets.v1');if(raw)presets=P.decode(raw);}catch(error){status(t('Stored presets could not be read.'),true);}
  $('preview-note').hidden=H.available;if(!H.available)['apply','visibility','lock-guides'].forEach(k=>$(k).disabled=true);
- let frame=0,lastFit='';
+ let frame=0,lastFit='',maxPanelHeight=Math.max(430,window.innerHeight);
  function fitPanel(){
   cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
-   const width=Math.max(260,window.innerWidth),height=Math.min(Math.max(260,Math.ceil(Math.min($('content-layout').getBoundingClientRect().height,$('options').hidden?420:Infinity)+all('main > .tabbar,main > .notice,main > footer').reduce((n,el)=>n+el.getBoundingClientRect().height,0))+2),Math.max(260,screen.availHeight-80));
+   const layout=$('content-layout'),width=Math.max(260,window.innerWidth);
+   let gridHeight;
+   if(!$('page-grid').hidden)gridHeight=layout.getBoundingClientRect().height;
+   else{
+    const measure=layout.cloneNode(true);
+    measure.style.cssText='position:absolute;visibility:hidden;pointer-events:none;left:-10000px;width:'+layout.getBoundingClientRect().width+'px';
+    measure.querySelectorAll('[role=tabpanel]').forEach(page=>page.hidden=page.id!=='page-grid');
+    measure.querySelector('#options').hidden=false;measure.querySelector('#save-form').hidden=true;
+    document.body.append(measure);gridHeight=measure.getBoundingClientRect().height;measure.remove();
+   }
+   const contentHeight=Math.max(gridHeight,Math.min(layout.getBoundingClientRect().height,$('options').hidden?420:Infinity));
+   const needed=Math.max(460,Math.ceil(contentHeight+all('main > .tabbar,main > .notice,main > footer').reduce((n,el)=>n+el.getBoundingClientRect().height,0))+4);
+   maxPanelHeight=Math.max(maxPanelHeight,needed);
+   const height=Math.min(maxPanelHeight,Math.max(260,screen.availHeight-80));
    const key=width+':'+height;if(!H.available||key===lastFit)return;lastFit=key;
    if(Math.abs(window.innerHeight-height)>2)try{H.resize(width,height);}catch(error){console.warn('Panel resize unavailable',error);}
   });

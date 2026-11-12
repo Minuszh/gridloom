@@ -7,11 +7,11 @@
     <RequiredRuntimeList><RequiredRuntime Name="CSXS" Version="12.0"/></RequiredRuntimeList>
   </ExecutionEnvironment>
   <DispatchInfoList><Extension Id="studio.gridloom.panel"><DispatchInfo>
-    <Resources><MainPath>./index.html</MainPath><ScriptPath>./host/loader.jsx</ScriptPath></Resources>
+    <Resources><MainPath>./index.html</MainPath></Resources>
     <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
     <UI><Type>Panel</Type><Menu>gridloom</Menu>
-      <Geometry><Size><Width>320</Width><Height>430</Height></Size><MinSize><Width>260</Width><Height>260</Height></MinSize></Geometry>
-      <Icons><Icon Type="Normal">./assets/icon-dark.png</Icon><Icon Type="RollOver">./assets/icon-dark.png</Icon><Icon Type="DarkNormal">./assets/icon.png</Icon><Icon Type="DarkRollOver">./assets/icon.png</Icon></Icons>
+      <Geometry><Size><Width>320</Width><Height>460</Height></Size><MinSize><Width>260</Width><Height>260</Height></MinSize></Geometry>
+      <Icons><Icon Type="Normal">./assets/panel-icon-dark.png</Icon><Icon Type="RollOver">./assets/panel-icon-dark.png</Icon><Icon Type="DarkNormal">./assets/panel-icon.png</Icon><Icon Type="DarkRollOver">./assets/panel-icon.png</Icon></Icons>
     </UI>
   </DispatchInfo></Extension></DispatchInfoList>
 </ExtensionManifest>

@@ -31,7 +31,7 @@ var GridloomHost=(function(){
  }
  function read(){var d=doc(),p=currentPage(d),c=context(d,p),settings=prefill(d,p),token=String(++serial);
   pending={docId:d.id,pageId:p.id,context:c,token:token,origin:String(d.viewPreferences.rulerOrigin),zero:encode(d.zeroPoint),unit:unit(d)};
-  return {token:token,name:d.name,unit:pending.unit,contexts:[c],guideState:state(d),prefill:settings,savedGrid:savedGrid(d,c.key),capabilities:{livePreview:false,host:'InDesign'}};
+  return {token:token,name:d.name,unit:pending.unit,contexts:[c],guideState:state(d),prefill:settings,savedGrid:savedGrid(d,c.key),capabilities:{livePreview:true,host:'InDesign'}};
  }
  function savedGrid(d,key){var tag=prefix+key+'|',marker='\ngridloom:settings|',g,at;for(var i=0;i<d.guides.length;i++){g=d.guides[i];if(g.label.indexOf(tag)===0){at=g.label.indexOf(marker);if(at>=0)return g.label.substring(at+marker.length);}}return null;}
  function verified(token){var d=doc(),p=currentPage(d);check(pending&&pending.token===token,'操作已过期，请重新生成');check(d.id===pending.docId&&p.id===pending.pageId,'选区或画板已变化，请重新生成');check(encode(context(d,p))===encode(pending.context)&&pending.origin===String(d.viewPreferences.rulerOrigin)&&pending.zero===encode(d.zeroPoint)&&pending.unit===unit(d),'选区或画板已变化，请重新生成');return {doc:d,page:p,context:pending.context};}
@@ -48,9 +48,33 @@ var GridloomHost=(function(){
    pending=null;return {count:created.length,removed:removed.length,guideState:state(d)};
   }catch(error){for(i=created.length-1;i>=0;i--)try{if(created[i].isValid)created[i].remove();}catch(ignore){}for(i=0;i<removed.length;i++){var z=removed[i];p.guides.add(z.itemLayer,{orientation:z.orientation,location:pt(z.location),fitToPage:z.fitToPage,label:z.label,locked:z.locked});}if(made&&l.isValid&&!l.allPageItems.length)try{l.remove();}catch(ignore2){}throw error;}
  }
+ function beginLive(payload){
+  check(!$.global.GridloomIDPreview,'请先应用或取消实时编辑');var s=verified(payload.token),l=layer(s.doc),originals=[],g;
+  if(l)check(!l.locked&&l.visible,'请先解锁并显示 gridloom 图层');
+  for(var i=0;i<s.doc.guides.length;i++){g=s.doc.guides[i];if(g.label.indexOf(prefix+s.context.key+'|')===0){check(!g.locked&&!g.itemLayer.locked,'范围内有锁定参考线，请先解锁');var data=snapshot(g);data.layerId=g.itemLayer.id;delete data.itemLayer;originals.push(data);}}
+  $.global.GridloomIDPreview={id:String(++serial),scope:pending,originals:originals,changed:false,created:!l};return {id:$.global.GridloomIDPreview.id};
+ }
+ function liveState(id){check($.global.GridloomIDPreview&&$.global.GridloomIDPreview.id===id,'实时编辑已结束，请重新开启');pending=$.global.GridloomIDPreview.scope;return verified(pending.token);}
+ function updateLive(payload){var s=liveState(payload.id),result=apply({token:pending.token,plans:payload.plans});$.global.GridloomIDPreview.changed=true;$.global.GridloomIDPreview.plans=payload.plans;return result;}
+ function commitLive(payload){var s=liveState(payload.id);check($.global.GridloomIDPreview.changed,'请先调整网格');var result=apply({token:pending.token,plans:$.global.GridloomIDPreview.plans,settings:payload.settings});$.global.GridloomIDPreview=null;return result;}
+ function cancelLive(){
+  if(!$.global.GridloomIDPreview)return {};var d=null,i,g,p,l;
+  for(i=0;i<app.documents.length;i++)if(app.documents[i].id===$.global.GridloomIDPreview.scope.docId)d=app.documents[i];
+  if(!d){$.global.GridloomIDPreview=null;return {};}
+  p=d.pages.itemByID($.global.GridloomIDPreview.scope.pageId);if(!p.isValid){$.global.GridloomIDPreview=null;return {};}
+  if($.global.GridloomIDPreview.changed){
+   var originals=$.global.GridloomIDPreview.originals,restored=[],current=[];
+   for(i=0;i<d.guides.length;i++){g=d.guides[i];if(g.label.indexOf(prefix+$.global.GridloomIDPreview.scope.context.key+'|')===0){check(!g.locked&&!g.itemLayer.locked,'范围内有锁定参考线，请先解锁');current.push(g);}}
+   try{for(i=0;i<originals.length;i++){var z=originals[i];l=d.layers.itemByID(z.layerId);check(l.isValid&&!l.locked,'范围内有锁定参考线，请先解锁');restored.push(p.guides.add(l,{orientation:z.orientation,location:pt(z.location),fitToPage:z.fitToPage,label:z.label,locked:z.locked}));}}
+   catch(error){for(i=0;i<restored.length;i++)if(restored[i].isValid)restored[i].remove();throw error;}
+   for(i=current.length-1;i>=0;i--)current[i].remove();
+   l=layer(d);if($.global.GridloomIDPreview.created&&l&&!l.allPageItems.length){var used=false;for(i=0;i<d.guides.length;i++)if(d.guides[i].itemLayer.id===l.id)used=true;if(!used)l.remove();}
+  }
+  $.global.GridloomIDPreview=null;pending=null;return {guideState:state(d)};
+ }
  function toggle(property){var d=doc(),l=layer(d);check(l,'请先生成 gridloom 参考线');l[property]=!l[property];return state(d);}
  function dispatch(method,payload){var old=app.scriptPreferences.measurementUnit;try{app.scriptPreferences.measurementUnit=MeasurementUnits.POINTS;var value;
-  if(method==='session')value={id:GridloomSessionId};else if(method==='context')value=read();else if(method==='apply'){app.doScript(function(){value=apply(payload);},ScriptLanguage.JAVASCRIPT,undefined,UndoModes.ENTIRE_SCRIPT,'gridloom');}else if(method==='lockGuides')value=toggle('locked');else if(method==='visibility')value=toggle('visible');else if(method==='liveCancel')value={};else throw Error('InDesign 暂不支持实时预览');
+  if(method==='session')value={id:GridloomSessionId};else if(method==='context')value=read();else if(method==='apply'){value=apply(payload);}else if(method==='lockGuides')value=toggle('locked');else if(method==='visibility')value=toggle('visible');else if(method==='liveBegin')value=beginLive(payload);else if(method==='liveUpdate'||method==='liveCommit'||method==='liveCancel'){if(method==='liveUpdate')value=updateLive(payload);else if(method==='liveCommit')value=commitLive(payload);else value=cancelLive();}else throw Error('Unknown gridloom operation');
   return encode({ok:true,value:value});
  }catch(error){return encode({ok:false,error:String(error.message||error)});}finally{app.scriptPreferences.measurementUnit=old;}}
  return {dispatch:dispatch};

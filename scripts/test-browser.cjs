@@ -15,12 +15,13 @@ async function main(){
  const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text);return r.result.value;};
  async function stableTabs(){
   await evaluate(`window.tabFits=[];window.tabResize=GridloomHostClient.resize;GridloomHostClient.resize=(w,h)=>tabFits.push([w,h]);GridloomHostClient.available=true`);
+  let largest=0;
   for(const width of [260,320,400]){
    await send('Emulation.setDeviceMetricsOverride',{width,height:950,screenWidth:1600,screenHeight:1200,deviceScaleFactor:1,mobile:false});
    for(const name of ['grid','presets','notation','grid']){
     await evaluate(`document.getElementById('tab-${name}').click();new Promise(resolve=>setTimeout(resolve,80))`);
-    const size=await evaluate(`({fit:tabFits.at(-1),expected:Math.max(260,Math.ceil(Math.min(document.getElementById('content-layout').getBoundingClientRect().height,document.getElementById('options').hidden?420:Infinity)+[...document.querySelectorAll('main > .tabbar,main > .notice,main > footer')].reduce((n,e)=>n+e.getBoundingClientRect().height,0))+2)})`);
-    assert(size.fit&&size.fit[0]===width&&size.fit[1]===size.expected,'Panel height must match active content at '+width+' '+name);
+    const size=await evaluate(`({fit:tabFits.at(-1)||[innerWidth,innerHeight],expected:Math.max(260,Math.ceil(Math.min(document.getElementById('content-layout').getBoundingClientRect().height,document.getElementById('options').hidden?420:Infinity)+[...document.querySelectorAll('main > .tabbar,main > .notice,main > footer')].reduce((n,e)=>n+e.getBoundingClientRect().height,0))+2)})`);
+    assert(size.fit&&size.fit[0]===width&&size.fit[1]>=size.expected&&size.fit[1]>=largest,'Panel must retain its largest height at '+width+' '+name);largest=size.fit[1];
    }
   }
   await evaluate(`GridloomHostClient.available=false;GridloomHostClient.resize=tabResize;document.getElementById('tab-grid').click()`);
@@ -38,6 +39,17 @@ async function main(){
  assert(await evaluate(`document.querySelectorAll('[data-builtin]').length===0`),'Presets must be deferred until first visit');
  await stableTabs();
  for(const width of [260,320,400]){await send('Emulation.setDeviceMetricsOverride',{width,height:950,deviceScaleFactor:1,mobile:false});assert(await evaluate(`document.documentElement.scrollWidth<=innerWidth`),'Horizontal overflow at '+width);}
+ for(const width of [260,320,400]){
+  await send('Emulation.setDeviceMetricsOverride',{width,height:950,deviceScaleFactor:1,mobile:false});
+  assert(await evaluate(`[...document.querySelectorAll('.count-control')].every(e=>{const a=e.getBoundingClientRect(),b=e.querySelector('button').getBoundingClientRect();return b.top>=a.top&&b.bottom<=a.bottom+1&&b.right<=a.right+1;})`),'Slider button left its field');
+ }
+ await evaluate(`document.querySelector('[data-book="horizontal"]').click()`);
+ assert(await evaluate(`['top','bottom','inner','outer'].every(k=>!document.getElementById('margin-'+k).parentElement.hidden)&&document.getElementById('margin-left').parentElement.hidden`),'Facing-page margin labels');
+ await evaluate(`document.querySelector('[data-book="vertical"]').click()`);
+ assert(await evaluate(`['left','right','inner','outer'].every(k=>!document.getElementById('margin-'+k).parentElement.hidden)&&document.getElementById('margin-top').parentElement.hidden`),'Stacked-page margin labels');
+ await evaluate(`document.getElementById('center-h').click();document.getElementById('center-v').click()`);
+ assert(await evaluate(`document.getElementById('center-h').getAttribute('aria-pressed')==='true'&&document.getElementById('center-v').getAttribute('aria-pressed')==='true'`),'Independent center toggles');
+ await evaluate(`document.getElementById('center-h').click();document.getElementById('center-v').click();document.querySelector('[data-book="none"]').click()`);
  await evaluate(`document.getElementById('cols').value='6';document.getElementById('cols').dispatchEvent(new Event('input',{bubbles:true}))`);
  assert(await evaluate(`document.getElementById('status').textContent==='14 guides'`),'Grid preview did not update');
  await evaluate(`document.getElementById('tab-notation').click();document.getElementById('notation').value='$c = | ~ |\\n$c*3 (v)';document.getElementById('notation').dispatchEvent(new Event('input',{bubbles:true}))`);

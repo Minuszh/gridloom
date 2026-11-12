@@ -129,16 +129,21 @@
   function book(config, context, draw) {
     const mode=config.book||'none';
     assert(['none','horizontal','vertical'].includes(mode),'无效书籍模式');
-    if(mode==='none')return draw(config,context);
+    const finish=result=>({...result,lines:unique(result.lines.concat(config.centerH?quick('middle',context,config.guideLength):[],config.centerV?quick('center',context,config.guideLength):[]),config.precision)});
+    if(mode==='none')return finish(draw(config,context));
     const [l,t,r,b]=context.bounds;
     const bounds=mode==='horizontal'?[[l,t,(l+r)/2,b],[(l+r)/2,t,r,b]]:[[l,t,r,(t+b)/2],[l,(t+b)/2,r,b]];
     const pageConfig={...config,book:'none',guideLength:'selection'};
-    const first=draw(pageConfig,{...context,bounds:bounds[0],artboard:bounds[0]});
-    // Both pages have the same dimensions: calculate once and translate the second set.
-    const dx=bounds[1][0]-l,dy=bounds[1][1]-t;
-    const second=first.lines.map(([x1,y1,x2,y2])=>[x1+dx,y1+dy,x2+dx,y2+dy]);
+    const m=config.margins,paired=typeof m.inner==='string'&&typeof m.outer==='string';
+    const pages=bounds.map((rect,i)=>{
+      if(i&&!paired)return null;
+      const margins=!paired?m:mode==='horizontal'?{...m,left:i?m.inner:m.outer,right:i?m.outer:m.inner}:{...m,top:i?m.inner:m.outer,bottom:i?m.outer:m.inner};
+      return draw({...pageConfig,margins},{...context,bounds:rect,artboard:rect});
+    });
+    const first=pages[0],dx=bounds[1][0]-l,dy=bounds[1][1]-t;
+    const second=pages[1]?pages[1].lines:first.lines.map(([x1,y1,x2,y2])=>[x1+dx,y1+dy,x2+dx,y2+dy]);
     const center=mode==='horizontal'?[(l+r)/2,t,(l+r)/2,b]:[l,(t+b)/2,r,(t+b)/2];
-    return {...first,lines:unique(first.lines.concat(second,[center]),config.precision)};
+    return finish({...first,lines:unique(first.lines.concat(second,[center]),config.precision)});
   }
   function plan(config,context){return book(config,context,planPage);}
   function planPage(config, context) {
@@ -151,7 +156,7 @@
     const span = config.guideLength === 'artboard' ? context.artboard : context.bounds;
     let lines = x.positions.map(v => [left + v, span[1], left + v, span[3]])
       .concat(y.positions.map(v => [span[0], top - v, span[2], top - v]));
-    const empty=[...Object.values(m),config.cols,config.rows,config.colWidth,config.rowHeight,config.gutterX,config.gutterY].every(v=>String(v).trim()==='');
+    const empty=[m.top,m.right,m.bottom,m.left,config.cols,config.rows,config.colWidth,config.rowHeight,config.gutterX,config.gutterY].every(v=>String(v).trim()==='');
     if (config.border || empty) lines.push(...(empty?[0,width]:x.outer).map(v=>[left+v,span[1],left+v,span[3]]),...(empty?[0,height]:y.outer).map(v=>[span[0],top-v,span[2],top-v]));
     return {lines: unique(lines, config.precision), columns: x, rows: y};
   }
@@ -161,6 +166,6 @@
     assert(map[which], '未知快捷操作');
     return [map[which]];
   }
-  const defaults = () => ({unit:'mm',margins:{top:'12',right:'12',bottom:'12',left:'12'},cols:'12',rows:'0',colWidth:'',rowHeight:'',gutterX:'4',gutterY:'4',alignX:'start',alignY:'start',guideLength:'artboard',precision:3,border:false,book:'none'});
+  const defaults = () => ({unit:'mm',margins:{top:'12',right:'12',bottom:'12',left:'12'},cols:'12',rows:'0',colWidth:'',rowHeight:'',gutterX:'4',gutterY:'4',alignX:'start',alignY:'start',guideLength:'artboard',precision:3,border:false,book:'none',centerH:false,centerV:false});
   return {UNITS,LIMIT,assert,length,qualify,sizeToken,field,axis,unique,book,plan,quick,defaults};
 });

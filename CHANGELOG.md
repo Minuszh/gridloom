@@ -1,9 +1,22 @@
 # Changelog / 更新记录
 
-0.5.0 是当前唯一公开 Release。旧测试包已撤下，以下保留开发历史。
-0.5.0 is the sole public Release. Earlier test packages were withdrawn; development history is retained below.
+历史条目记录当时行为，不代表当前界面。此前公开包已由本次测试版替代。
+Historical entries describe behavior at the time. The previous package is superseded by this pre-release.
 
-## 0.5.0 — 2026-11-07
+## 0.5.0 Pre-release / 测试版 — 2026-11-12
+
+- Illustrator 与 InDesign 共用实时预览流程；InDesign 原生预览更新、应用和取消恢复通过临时文档测试。
+  Shared live-preview workflow; native InDesign update, commit and cancellation checks passed on temporary documents.
+- 添加水平 / 垂直中心线、镜像内外边距，以及中心线与网格位置的紧凑分割布局。
+  Add horizontal/vertical center lines, mirrored book margins, and a compact split control row.
+- 面板高度包含书籍模式与底部操作，切换标签不再缩短。
+  Include book controls and footer in panel height; do not shrink on tab changes.
+- 使用新图标，停靠栏图形缩至 85%；签名包在开发模式关闭时安装到两个宿主。
+  New icon at 85% scale; signed package installed for both hosts with debug mode off.
+- 重写中英文 README 和安装、测试、签名文档，使用同一组中文实机截图，归档旧包和旧截图。
+  Rewrite bilingual documentation, share Chinese native screenshots, and archive old packages and images.
+
+## 0.5.0 — 2026-11-07（已撤回 / withdrawn）
 
 - 紧凑面板、单层预设滚动、中英文自动匹配，英文简写语法标注维护中。
   Compact panel, one preset scroll area, automatic Chinese/English UI, and English shorthand notation marked under maintenance.

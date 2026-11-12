@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
-(function(){var d=null,old=app.scriptPreferences.measurementUnit,output=[];function ok(v,m){if(!v)throw Error(m);}function call(method,args){var r=eval('('+GridloomHost.dispatch(method,args||{})+')');ok(r.ok,r.error);return r.value;}
+(function(){var d=null,old=app.scriptPreferences.measurementUnit,testHost=null,output=[];function ok(v,m){if(!v)throw Error(m);}function call(method,args){var response=testHost.dispatch(method,args||{});var r=eval('('+response+')');ok(r.ok,method+': '+r.error);return r.value;}
 try{app.scriptPreferences.measurementUnit=MeasurementUnits.POINTS;d=app.documents.add();d.documentPreferences.properties={facingPages:true,pagesPerDocument:3,pageWidth:400,pageHeight:600};d.zeroPoint=[17,23];d.viewPreferences.rulerOrigin=RulerOrigin.SPINE_ORIGIN;var p=d.pages[1];app.activeWindow.activePage=p;p.marginPreferences.properties={top:20,bottom:30,left:25,right:35,columnCount:4,columnGutter:12,columnDirection:HorizontalOrVertical.HORIZONTAL};
-$.evalFile(File(File($.fileName).parent.parent+'/host/indesign.jsx'));
+$.evalFile(File(File($.fileName).parent.parent+'/host/indesign.jsx'));testHost=GridloomHost;
 var c=call('context');ok(c.prefill.config.cols==='4','prefill count');var b=c.contexts[0].bounds,lines=[[b[0]+50,b[1],b[0]+50,b[3]],[b[0],b[1]-60,b[2],b[1]-60]];
 var existing=p.guides.add({orientation:HorizontalOrVertical.HORIZONTAL,location:77});
 var result=call('apply',{token:c.token,plans:[{key:c.contexts[0].key,lines:lines}]});ok(result.count===2,'create');ok(d.guides.length===3,'manual retained');ok(d.guides[0].parentPage.id===p.id,'guide page association');ok(String(d.zeroPoint)==='17,23','ruler origin preserved');output.push('native guides='+d.guides.length);
 c=call('context');result=call('apply',{token:c.token,plans:[{key:c.contexts[0].key,lines:[lines[0]]}]});ok(result.removed===2&&d.guides.length===2,'replace');ok(existing.isValid,'manual guide');
 ok(call('lockGuides').locked,'lock');ok(!call('lockGuides').locked,'unlock');ok(!call('visibility').visible,'hide');ok(call('visibility').visible,'show');
-c=call('context');app.activeWindow.activePage=d.pages[2];var stale=eval('('+GridloomHost.dispatch('apply',{token:c.token,plans:[{key:c.contexts[0].key,lines:lines}]})+')');ok(!stale.ok,'stale page');
+c=call('context');app.activeWindow.activePage=d.pages[2];var stale=eval('('+testHost.dispatch('apply',{token:c.token,plans:[{key:c.contexts[0].key,lines:lines}]})+')');ok(!stale.ok,'stale page');
 p.marginPreferences.columnDirection=HorizontalOrVertical.VERTICAL;app.activeWindow.activePage=p;c=call('context');ok(c.prefill.config.rows==='4'&&c.prefill.config.cols==='0','vertical columns map to rows');
 var objectPage=d.pages[0],rect=objectPage.rectangles.add({geometricBounds:[60,70,160,170]});app.activeWindow.activePage=d.pages[2];app.select(rect);c=call('context');ok(c.contexts[0].key.indexOf('page:'+objectPage.id+':selection:')===0,'selected object page wins: '+c.contexts[0].key+' expected='+objectPage.id+' selected='+app.selection.length+' ownBounds='+rect.hasOwnProperty('geometricBounds')+' parent='+rect.parentPage.id);app.select(NothingEnum.NOTHING);
+app.activeWindow.activePage=p;c=call('context');var before=d.guides.length,session=call('liveBegin',{token:c.token});
+call('liveUpdate',{id:session.id,plans:[{key:c.contexts[0].key,lines:[lines[0]]}]});
+call('liveUpdate',{id:session.id,plans:[{key:c.contexts[0].key,lines:lines}]});ok(d.guides.length===before+1,'live replaces instead of accumulating');
+call('liveCancel');ok(d.guides.length===before&&existing.isValid,'cancel restores original and manual guide');
+c=call('context');session=call('liveBegin',{token:c.token});call('liveUpdate',{id:session.id,plans:[{key:c.contexts[0].key,lines:lines}]});call('liveCommit',{id:session.id,settings:'test-settings'});ok(call('context').savedGrid==='test-settings','commit saves settings');
+c=call('context');session=call('liveBegin',{token:c.token});call('liveUpdate',{id:session.id,plans:[{key:c.contexts[0].key,lines:[lines[0]]}]});app.activeWindow.activePage=d.pages[0];var rejected=eval('('+testHost.dispatch('liveUpdate',{id:session.id,plans:[{key:c.contexts[0].key,lines:lines}]})+')');ok(!rejected.ok,'live rejects page change');call('liveCancel');ok(existing.isValid,'cancel on another page preserves manual guide');
+output.push('native live updates, cancel, commit metadata and page-change recovery passed');
 output.push('margins, guide creation/replacement, manual preservation, toggles and stale page passed');return output.join('\n');
 }finally{if(d&&d.isValid)d.close(SaveOptions.NO);app.scriptPreferences.measurementUnit=old;}})();

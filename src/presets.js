@@ -12,8 +12,9 @@
   G.assert(Number.isInteger(c.precision)&&c.precision>=0&&c.precision<=6&&typeof c.border==='boolean','无效精度');
   G.assert(typeof p.notation==='string'&&p.notation.length<=50000,'无效语法文本');
   G.assert(c.book===undefined||['none','horizontal','vertical'].includes(c.book),'无效书籍模式');
-  // Allowlist fields; never merge arbitrary imported keys into runtime state.
-  return {name:p.name.trim(),mode:p.mode,config:Object.fromEntries(Object.keys(d).map(k=>[k,k==='margins'?Object.fromEntries(['top','right','bottom','left'].map(side=>[side,c.margins[side]])):k==='book'?(c.book||'none'):c[k]])),notation:p.notation};
+  for(const k of ['inner','outer'])G.assert(c.margins[k]===undefined||typeof c.margins[k]==='string'&&c.margins[k].length<=512,'无效边距');
+  for(const k of ['centerH','centerV'])G.assert(c[k]===undefined||typeof c[k]==='boolean','无效中心线');
+  return {name:p.name.trim(),mode:p.mode,config:Object.fromEntries(Object.keys(d).map(k=>[k,k==='margins'?Object.fromEntries(['top','right','bottom','left','inner','outer'].filter(side=>c.margins[side]!==undefined).map(side=>[side,c.margins[side]])):k==='book'?(c.book||'none'):k==='centerH'||k==='centerV'?!!c[k]:c[k]])),notation:p.notation};
  }
  function decode(text){G.assert(text.length<1000000,'预设文件过大');const data=JSON.parse(text);G.assert(data.version===1&&Array.isArray(data.presets)&&data.presets.length<=100,'不支持的预设格式');return data.presets.map(validate);}
  function encode(presets){return JSON.stringify({version:1,presets:presets.map(validate)},null,2);}

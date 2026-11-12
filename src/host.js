@@ -21,7 +21,7 @@
         const script=`var gridloomReply;try{if(typeof GridloomHost==='undefined'){$.evalFile(File(${escape(hostFile)}));$.global.GridloomHost=GridloomHost;}gridloomReply=GridloomHost.dispatch(${escape(method)},${escape(payload)});}catch(gridloomError){gridloomReply='GRIDLOOM_HOST_ERROR:'+String(gridloomError);}gridloomReply;`;
         cep.evalScript(script,raw=>{
           try{if(typeof raw!=='string'||raw.trim()[0]!=='{')throw new Error(raw&&raw.indexOf('GRIDLOOM_HOST_ERROR:')===0?raw.slice(20):'宿主脚本未能加载，请关闭并重新打开面板');const data=JSON.parse(raw);if(!data.ok)throw new Error(data.error);resolve(data.value);}
-          catch(error){reject(new Error(raw==='EvalScript error.'?'Illustrator 脚本执行失败':error.message));}
+          catch(error){reject(new Error(raw==='EvalScript error.'?(environment.appId==='IDSN'?'InDesign':'Illustrator')+' 脚本加载失败，请关闭并重新打开扩展面板':error.message));}
         });
       });}finally{busy=false;}
     }

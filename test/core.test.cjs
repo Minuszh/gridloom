@@ -94,3 +94,20 @@ test('short syntax preserves blank margins without adding boundary guides',()=>{
  const c={...cfg(),cols:'0',rows:'0',border:false,margins:{top:'',right:'12pt',bottom:'',left:''}};
  assert.deepEqual(N.compile(N.fromGrid(c,context),context,c).lines,G.plan(c,context).lines);
 });
+
+test('book inner and outer margins mirror across binding',()=>{
+ const ctx={bounds:[0,200,400,0],artboard:[0,200,400,0]};
+ const c={...G.defaults(),unit:'pt',cols:'0',rows:'0',book:'horizontal',margins:{top:'10',bottom:'15',left:'8',right:'9',inner:'30',outer:'20'}};
+ const lines=G.plan(c,ctx).lines;
+ for(const x of [20,170,230,380])assert.ok(lines.some(l=>l[0]===x&&l[2]===x));
+ c.book='vertical';const v=G.plan(c,ctx).lines;
+ for(const y of [180,130,70,20])assert.ok(v.some(l=>l[1]===y&&l[3]===y));
+});
+test('center lines follow selected bounds and survive preset roundtrip',()=>{
+ const c={...cfg(),cols:'0',rows:'0',centerH:true,centerV:true};
+ const lines=G.plan(c,context).lines;
+ assert.ok(lines.some(l=>JSON.stringify(l)===JSON.stringify([310,1000,310,0])));
+ assert.ok(lines.some(l=>JSON.stringify(l)===JSON.stringify([0,603,600,603])));
+ c.margins.inner='20';c.margins.outer='10';
+ assert.deepEqual(P.decode(P.encode([{name:'centers',mode:'grid',config:c,notation:''}]))[0].config,c);
+});

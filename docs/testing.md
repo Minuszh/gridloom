@@ -1,52 +1,41 @@
-# 测试与本地安装
+# 测试与开发
 
-## 自动检查
+[English](testing.en.md) · [安装](installing.md) · [README](../README.md)
 
-需要 Node.js 22+；无需安装依赖。
+## 检查命令
 
-```sh
-npm test
-npm run check
-npm run build
-npm run test:ui
-```
-
-界面测试需要 Google Chrome，也可通过 `CHROME_BIN` 指定路径。87 项单元与宿主模拟测试覆盖计算、语法、预设、范围校验、失败恢复和文档参数读取。Chrome 回归覆盖中英文、窄面板、单层滚动、滑条、预览队列及会话恢复。
-
-## 浏览器预览
-
-运行 `npm run preview`，打开 `http://127.0.0.1:4173`。`?lang=zh` 和 `?lang=en` 切换语言。浏览器使用示例画板，不能修改 Adobe 文档。
-
-## 开发安装
-
-构建后执行 `npm run install:dev`。未签名开发版需要开启 CEP 12 开发模式。
-
-macOS：
+Node.js 22+，无需安装依赖：
 
 ```sh
-defaults write com.adobe.CSXS.12 PlayerDebugMode 1
+npm test          # 计算、语法、预设、宿主模拟、预览队列
+npm run check     # 语法、资源、灰度、版本一致性
+npm run build     # 生成 dist/
+npm run test:ui   # Chrome 界面回归
+npm run preview  # 浏览器查看面板
 ```
 
-Windows：
+Chrome 可通过 `CHROME_BIN` 指定。浏览器地址 `http://127.0.0.1:4173`；`?lang=zh` / `?lang=en` 切换语言。浏览器使用示例画板，不操作 Adobe 文档。
 
-```bat
-reg add HKCU\Software\Adobe\CSXS.12 /v PlayerDebugMode /t REG_SZ /d 1 /f
-```
+## 当前覆盖
 
-重开 Illustrator 或 InDesign，在「窗口 → 扩展功能」打开 gridloom。macOS 安装目录为 `~/Library/Application Support/Adobe/CEP/extensions/studio.gridloom.panel`；Windows 为 `%APPDATA%\Adobe\CEP\extensions\studio.gridloom.panel`。
+2026-11-12：89 项自动测试、资源检查、构建及 Chrome 回归通过。覆盖中心线、内外边距镜像、旧预设读取、预览更新队列、会话参数恢复，以及 260 / 320 / 400 px 面板布局。检查标签切换不降低窗口高度、数量滑条按钮留在输入框内。
 
-## 实机检查
+InDesign 临时文档测试已覆盖原生参考线创建与替换、手动参考线保留、页边距、分栏、选中对象所属页面、连续预览、应用、取消恢复和页面切换后的过期范围判断。对应脚本为 `scripts/smoke-indesign.jsx`；Illustrator 检查入口为 `scripts/smoke-illustrator.jsx`。
 
-1. A2 画板，边距 24mm、12 列、间距 6mm、0 行，列宽应为 25.5mm，上下仍有边距线。
-2. 应用两次，当前范围的 gridloom 网格被替换，手动画的参考线保留。
-3. 选中对象使用对象边界；取消选择使用当前画板。切换范围不覆盖输入。
-4. 左右或上下书籍模式分别生成两套网格，并有中线。
-5. 开启底部眼睛预览，连续调整数量后应用；锁定图层会关闭预览。
-6. 应用后保存文档，关闭软件再打开，首次读取对应范围应恢复参数。
-7. InDesign 首次读取当前页边距和分栏；在预设页检查版面字格。InDesign 暂不支持实时预览，参考线延伸至整页。
+完整退出软件后重新打开已保存文档的参数恢复，仍需继续实机验收。早期 Illustrator 预览崩溃及修改见 [排查记录](crash-investigation.md)。Windows 尚未实机测试。
 
-## 0.5.0 验证范围
+## 手动验收
 
-单元测试、宿主模拟、浏览器回归及构建检查通过。此前 InDesign 临时文档已验证原生参考线创建、替换、页边距、分栏、图层状态和对象所属页面判断。
+1. 420 × 594 mm 画板，四边 24 mm、12 列、栏距 6 mm、0 行：列宽 25.5 mm，上下边距线保留。
+2. 分别选中对象、取消选择、切换画板或页面：范围随宿主变化，输入参数保留。
+3. 应用两次：替换该范围的 gridloom 网格，手动参考线不变。
+4. 单独及同时打开水平、垂直中心线，检查范围中点和重合线去重。
+5. 书籍模式设内边距 20 mm、外边距 12 mm；分别检查左右、上下双页的装订侧镜像。
+6. 开启底部眼睛，拖动数量滑条，应用；再开启、修改并关闭预览，检查恢复。锁定时预览关闭。
+7. 切换三个标签：书籍模式与底部按钮完整可见，窗口不自动缩短；窄窗口无横向溢出。
+8. 应用并保存，退出重开宿主，首次进入原范围检查参数恢复。
+9. InDesign 检查首次页边距 / 分栏填充及两个页面预设；参考线按整页延伸。
 
-完整保存重开实机测试尚未完成：Illustrator AppleEvent 超时；InDesign 临时文件保存失败。参数持久化目前通过宿主重载与面板新会话模拟验证。实时预览的原生崩溃修复仍需实机确认，详见 [排查记录](crash-investigation.md)。
+## 目录
+
+`src/` 是共用界面与计算；`host/` 是两个宿主的脚本；`CSXS/` 是清单；`assets/` 是图标；`scripts/` 是构建和检查；`test/` 是自动测试。`dist/` 和 `release/` 为忽略提交的生成目录。
